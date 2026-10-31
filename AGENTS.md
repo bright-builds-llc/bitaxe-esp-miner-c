@@ -101,3 +101,33 @@ We use GitHub Actions for automated testing and releases.
 - **Reduce Verbosity**: Use one paragraph to describe changes. No headings, no "What this changes", no multi-line comments.
 - **Reuse Existing Code**: Avoid refactoring and making large changes on your own. If a large change or refactor is required, refuse to make any further changes and alert your operator.
 - **Minimize Scope**: If it's a contained feature, go for a PR and isolate the changes to that feature, minimizing the scope of the PR. If you have a restructuring of refactoring in mind, open an issue first to align it with ongoing changes.
+<!-- BEGIN Bright Builds fork section: everything above is upstream's, keep it on merges. -->
+## Bright Builds Fork
+
+This is `bright-builds-llc/bitaxe-esp-miner-c`: upstream's firmware plus the owner's extensions, chiefly Bitcoin Work Gate interoperability, with as small a difference from upstream as possible. Read `docs/project/c-fork-handoff.md` before any work on the Gate, an upstream fix, a fork-only extension or moving a device. It holds the ordered steps, the protocol summary and the hazards.
+
+### Owner Decisions (2026-10-30)
+- **Base:** fork work lands on `master`, on top of upstream's `master` at `bb4fd0c`. This replaces the handoff's recommendation of a separate branch from `v2.15.4`. Pull requests to upstream start from `upstream/master`, so they carry none of the fork's commits.
+- **Web UI:** keep AxeOS and add what the Gate needs.
+- **Device limits:** the catalog range and the target-power stop apply only while a Gate lease is active.
+- **BLE:** off in fork builds until the secured design (`task-secured-ble-provisioning`) exists.
+- **Device identity:** keep the `bwg_worker` NVS key names and formats, so devices keep their identity.
+- **Licence:** GPL-3.0 as a whole, with upstream's notices kept. Code or text moved from the Rust repository keeps its MIT notice. Review source and notice obligations before distributing an image.
+
+### Sync Policy
+- Put extensions in new components, such as `components/bwg_worker`, with narrow hooks in upstream files.
+- Merge `upstream/master`; history and evidence stay stable that way. Review what each merge brings in and name the checks it invalidates.
+- Send a change upstream in preference to carrying it, and follow upstream's conventions in `main/` and `components/`.
+- Use upstream's build, adding only the host test harness the fork needs.
+- List every upstream file the fork touches below, with the reason, so a merge conflict lands only in this list:
+  - `AGENTS.md`: this section.
+
+### Evidence Rules
+- Every claim names its board, commit and evidence, and lists its non-claims. All earlier evidence is about Rust images, so each claim here earns its own.
+- Committed evidence is free of IPs, MACs, SSIDs, credentials, pool users, workers and endpoints. Test log redaction against real formats, since vendor Wi-Fi logs leak the SSID.
+- Security-sensitive findings go through upstream's private flow (`SECURITY.md`). This repository is public, so commits, issues and pull requests name topics only.
+- Hardware work follows "Process rules worth keeping" in the handoff: closed outcomes, a stop on a repeated boundary, and a base-MAC match before any ROM write.
+
+### Hardware Authorization
+On 2026-10-30 the owner granted agents working in this repository full hardware autonomy, including direct UART and pin access. The owner also authorized use of the ignored credential and board files in the Rust repository (`~/Repos/bitaxe-esp-miner`). Use those values through scripts, keep them out of output and commits, and keep generated images that contain them outside this repository.
+<!-- END Bright Builds fork section -->
