@@ -17,4 +17,4 @@ Step 5 of `docs/project/c-fork-handoff.md`. Checked 2026-10-30 against upstream 
 
 ## Security-sensitive topics
 
-Bounds on settings accepted over HTTP, secrets in logs and over BAP, authentication on BLE writes, and handling of empty `www` uploads were checked privately on this tree. They go through upstream's private reporting flow in `SECURITY.md`, so this public file names topics only.
+Bounds on settings accepted over HTTP, secrets in logs and over BAP, and authentication on BLE writes were checked privately on this tree. They go through upstream's private reporting flow in `SECURITY.md`, so this public file names topics only.
