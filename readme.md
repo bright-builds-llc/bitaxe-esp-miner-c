@@ -6,6 +6,17 @@
 ![Alt](https://repobeats.axiom.co/api/embed/70889479b1e002c18a184b05bc5cbf2ed3718579.svg "Repobeats analytics image")
 
 # ESP-Miner
+
+<!-- bright-builds-rules-readme-badges:begin -->
+
+<!-- Managed upstream by bright-builds-rules. If this badge block needs a fix, open an upstream PR or issue instead of editing the downstream managed block. Keep repo-local README content outside this managed badge block. -->
+
+[![GitHub Stars](https://img.shields.io/github/stars/bright-builds-llc/bitaxe-esp-miner-c)](https://github.com/bright-builds-llc/bitaxe-esp-miner-c)
+[![License](https://img.shields.io/github/license/bright-builds-llc/bitaxe-esp-miner-c?style=flat-square)](./LICENSE)
+[![Bright Builds: Rules](https://raw.githubusercontent.com/bright-builds-llc/bright-builds-rules/main/public/badges/bright-builds-rules-flat.svg)](https://github.com/bright-builds-llc/bright-builds-rules)
+
+<!-- bright-builds-rules-readme-badges:end -->
+
 esp-miner is open source ESP32 firmware for the [Bitaxe](https://github.com/bitaxeorg/bitaxe)
 
 ## Community

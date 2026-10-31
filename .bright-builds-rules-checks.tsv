@@ -1,0 +1,25 @@
+# Upstream files the fork leaves unsplit, so merges from bitaxeorg/ESP-Miner stay clean. Fork-owned files stay subject to the limit.
+file-lengths	components/asic/test/test_mining_pipeline.c	Upstream file; splitting it would widen the difference from upstream
+file-lengths	components/connect/connect.c	Upstream file; splitting it would widen the difference from upstream
+file-lengths	components/stratum/coinbase_decoder.c	Upstream file; splitting it would widen the difference from upstream
+file-lengths	components/stratum/stratum_api.c	Upstream file; splitting it would widen the difference from upstream
+file-lengths	components/stratum/test/test_coinbase_decoder.c	Upstream file; splitting it would widen the difference from upstream
+file-lengths	components/stratum/test/test_stratum_json.c	Upstream file; splitting it would widen the difference from upstream
+file-lengths	components/stratum_v2/sv2_noise.c	Upstream file; splitting it would widen the difference from upstream
+file-lengths	main/http_server/axe-os/src/app/components/home/home.component.html	Upstream file; splitting it would widen the difference from upstream
+file-lengths	main/http_server/axe-os/src/app/components/home/home.component.spec.ts	Upstream file; splitting it would widen the difference from upstream
+file-lengths	main/http_server/axe-os/src/app/components/home/home.component.ts	Upstream file; splitting it would widen the difference from upstream
+file-lengths	main/http_server/axe-os/src/app/components/swarm/swarm.component.ts	Upstream file; splitting it would widen the difference from upstream
+file-lengths	main/http_server/axe-os/src/app/layout/styles/modules/primeicons.css	Upstream file; splitting it would widen the difference from upstream
+file-lengths	main/http_server/http_server.c	Upstream file; splitting it would widen the difference from upstream
+file-lengths	main/images/fonts/ui_font_DigitalNumbers28.c	Upstream file; splitting it would widen the difference from upstream
+file-lengths	main/images/generated/bitaxe_background.c	Upstream file; splitting it would widen the difference from upstream
+file-lengths	main/images/generated/bitaxe_logo_large.c	Upstream file; splitting it would widen the difference from upstream
+file-lengths	main/lv_font_portfolio-6x8.c	Upstream file; splitting it would widen the difference from upstream
+file-lengths	main/nvs_config.c	Upstream file; splitting it would widen the difference from upstream
+file-lengths	main/power/TPS546.c	Upstream file; splitting it would widen the difference from upstream
+file-lengths	main/screen.c	Upstream file; splitting it would widen the difference from upstream
+file-lengths	main/self_test/self_test.c	Upstream file; splitting it would widen the difference from upstream
+file-lengths	main/setup_ble.c	Upstream file; splitting it would widen the difference from upstream
+file-lengths	main/system.c	Upstream file; splitting it would widen the difference from upstream
+file-lengths	main/tasks/stratum_v2_client.c	Upstream file; splitting it would widen the difference from upstream
