@@ -41,7 +41,7 @@ The console log showed one error line, `wifi: sta is connecting, cannot set conf
 
 Installed from a Rust production image by factory install, with the same binary, after the base-MAC digest matched and the full flash was backed up privately. Write: 15,802,368 bytes, hash verified.
 
-**At stock settings it overheated.** At 525 MHz and 1150 mV, upstream's 75 C stop tripped 689 s after boot.
+**At stock settings upstream's overheat stop tripped, possibly on one reading.** At 525 MHz and 1150 mV, it tripped 689 s after boot on an ASIC reading of 76.875 C.
 
 | Uptime | ASIC | Regulator |
 | --- | --- | --- |
@@ -51,7 +51,7 @@ Installed from a Rust production image by factory install, with the same binary,
 | 614 s | 73.5 C | 76 C |
 | 690 s | 76.9 C | 76 C |
 
-Before the trip it averaged 1,060 GH/s (10-minute figure) at 20.5 W with the fan near 100% and 7,900 RPM, and had 51 shares accepted and 0 rejected. The cause is not established. Room temperature was not measured, and the handoff records one earlier trip on Rust at the same settings.
+Before the trip it averaged 1,060 GH/s (10-minute figure) at 20.5 W with the fan near 100% and 7,900 RPM, and had 51 shares accepted and 0 rejected. The fan controller's filtered temperature held between 73.4 and 73.8 C for the 87 s before the trip, and logged 73.7 C about 1.8 s before it. The regulator reading did not change. So the trip may have come from a brief spike or a bad read and not from sustained heating, as upstream issue #2000 describes, but the log cannot separate those. The margin is thin either way: 73.5 C sustained at full fan is 1.5 C under the limit. Room temperature was not measured, and the handoff records one earlier trip on Rust at the same settings.
 
 **Recovery.** Upstream cut power and saved 425 MHz, 1050 mV, manual fan and 100% fan speed to NVS. The observer also requested a pause at that moment, so the board stayed stopped after cooling, at 21 mV core, about 5 W and 30% fan. A watched reboot then ran at the saved settings:
 
@@ -63,7 +63,7 @@ Before the trip it averaged 1,060 GH/s (10-minute figure) at 20.5 W with the fan
 | Shares | 39 accepted, 0 rejected, no fallback, no overheat |
 | Internal heap free | 92,203 bytes, steady |
 
-The board keeps these reduced settings until someone changes them.
+The board keeps 425 MHz and 1050 mV until someone changes them. After later fan testing, the baseline app was reinstalled with auto fan turned back on. Over 240 s that held about 59 C at 35% fan.
 
 **Seen on this device, relevant to the handoff's upstream candidates:**
 
