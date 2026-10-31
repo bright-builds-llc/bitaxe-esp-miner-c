@@ -39,7 +39,40 @@ The console log showed one error line, `wifi: sta is connecting, cannot set conf
 
 ## Gamma 601
 
-Not done. The board was not attached over USB on 2026-10-30, so it has no install or observation here.
+Installed from a Rust production image by factory install, with the same binary, after the base-MAC digest matched and the full flash was backed up privately. Write: 15,802,368 bytes, hash verified.
+
+**At stock settings it overheated.** At 525 MHz and 1150 mV, upstream's 75 C stop tripped 689 s after boot.
+
+| Uptime | ASIC | Regulator |
+| --- | --- | --- |
+| 72 s | 66.5 C | 56 C |
+| 253 s | 72.5 C | 70 C |
+| 524 s | 72.9 C | 74 C |
+| 614 s | 73.5 C | 76 C |
+| 690 s | 76.9 C | 76 C |
+
+Before the trip it averaged 1,060 GH/s (10-minute figure) at 20.5 W with the fan near 100% and 7,900 RPM, and had 51 shares accepted and 0 rejected. The cause is not established. Room temperature was not measured, and the handoff records one earlier trip on Rust at the same settings.
+
+**Recovery.** Upstream cut power and saved 425 MHz, 1050 mV, manual fan and 100% fan speed to NVS. The observer also requested a pause at that moment, so the board stayed stopped after cooling, at 21 mV core, about 5 W and 30% fan. A watched reboot then ran at the saved settings:
+
+| Behaviour | Measured, 600 s |
+| --- | --- |
+| Hashrate | 865 GH/s 10-minute average, 867 GH/s expected |
+| Power, input | 13.6 W mean, 5.25 V mean |
+| Temperature, fan | ASIC 51.8 C and regulator 53 C at most, 100% fan at about 8,150 RPM |
+| Shares | 39 accepted, 0 rejected, no fallback, no overheat |
+| Internal heap free | 92,203 bytes, steady |
+
+The board keeps these reduced settings until someone changes them.
+
+**Seen on this device, relevant to the handoff's upstream candidates:**
+
+- Manual fan after recovery: 100% fan survived the reboot, even with the chip at 52 C.
+- `overheat_mode` in `/api/system/info` read 0 throughout the trip, because `main/system.c` loads it once at boot.
+- During the cooling wait, the API kept returning the last power and ASIC temperature readings from before the stop.
+- With power cut, the ASIC temperature reads -1.
+
+**Non-claims:** no self-test, power-loss, OTA or BLE exercise; no long run; no stable run at stock settings; no Gate behaviour. The 601's `bwg_worker` identity is no longer on the device, and exists only in the private backup.
 
 ## Effective settings for later steps
 
