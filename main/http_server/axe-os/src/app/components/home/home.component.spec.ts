@@ -53,6 +53,7 @@ const mockSystemInfo: ISystemInfo = {
   isPSRAMAvailable: 1,
   manualFanSpeed: 80,
   minFanSpeed: 20,
+  mineOnBoot: 0,
   miningPaused: false,
   overclockEnabled: 0,
   overheat_mode: 0,

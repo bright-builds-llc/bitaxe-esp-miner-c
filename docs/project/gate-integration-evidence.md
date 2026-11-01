@@ -45,7 +45,7 @@ Evidence for Bitcoin Work Gate parity with the Rust firmware, recorded 2026-11-0
 | Plan | Ordinal | Result |
 |---|---|---|
 | `attempt_normal` | 62 | Passed. 9 renewals, 178,214 ms active, 12 accepted, 0 rejected, 61 nonces, last chip reading 44 °C |
-| `attempt_diagnostic` | 63, 73 | 63 was refused, see "Open defect". 73 passed: 3,085 ms active, 2 nonces. `worker-mining-progress-v2` reports filter `bm1366-ticket-256-leading-zero-40-v1`, 4 matches, 0 misses |
+| `attempt_diagnostic` | 63, 73 | 63 was refused, see "A refused Start". 73 passed: 3,085 ms active, 2 nonces. `worker-mining-progress-v2` reports filter `bm1366-ticket-256-leading-zero-40-v1`, 4 matches, 0 misses |
 | `attempt_foreground` | 64 | Passed. `heartbeat_timeout`, closed 2,801 ms after the last heartbeat, stop started at 2,809 ms |
 | `attempt_heartbeat` | 65, 66, 67 | Passed three times. `heartbeat_timeout`, closed at 2,800 ms each time, stop started at 2,802, 2,826 and 2,867 ms |
 | `trace` | | Available. 1 event dropped on the boot that held attempts 62 to 67. The trace drops an event rather than block, and counts it. The cause of the one drop wasn't determined |
@@ -68,11 +68,43 @@ The acceptance campaign's three windows ran once, on an earlier image of this tr
 
 The telemetry loop runs on CPU 0 at priority 5, as the Gate's cadence contract names. The `usb` phase ran 12 probes. All intervals fell in the expected bucket, with 0 dropped observations.
 
-## Open defect: a refused Start
+## A refused Start, fixed after this image
 
-Attempt 63 was refused with `command_rejected` about 200 ms after the Gate sent Start, on an idle board at 33 °C. Its record reads `unsafe_observation`, 0 ms active, closed 1 ms after activation and with no stop stage run, and the ledger charged its 30,000 ms. It happened once in this session's 73 attempts, and attempt 73, on the same image, passed.
+Attempt 63 was refused with `command_rejected` about 200 ms after the Gate sent Start, on an idle board at 33 °C. Its record reads `unsafe_observation`, 0 ms active, closed 1 ms after activation and with no stop stage run, and the ledger charged its 30,000 ms. It happened once in this session's 73 attempts, and attempt 73, on the same image, passed. The image at the top of this file carries the defect.
 
-The likely cause, from reading the code, is a race, and it hasn't been reproduced. On a paused board the power task reads the pause and then ends any lease, and a local stop reports as `unsafe_observation`. A lease that opens between that read and that call ends at once. It errs on the safe side: no work ran and the chip stayed off. The Gate sees a failed Start and a spent allowance. This image carries the defect.
+On a paused board the power task read the pause and then ended any lease, and a local stop reports as `unsafe_observation`. A lease that opened between that read and that call ended at once. It erred on the safe side: no work ran and the chip stayed off, but the Gate saw a failed Start and a spent allowance. The task now reads whether a lease is open before it reads the flags. A lease clears its pause before it opens, so an early read of the pause can't end it.
+
+A temporary 400 ms delay after the flag read, never committed, widened the gap on two test images. Without the fix, 3 of 4 leases from a paused board were refused, each logging `local_stop` with no stop stage run. With the fix and the same delay, 6 of 6 started and stopped normally, with no `local_stop` logged.
+
+The clean image with the fix is `esp-miner.bin` SHA-256 `2b3f0c9bb12cb41ba3cf577b0fdf0ea7c764d84ff0ffab0295a7eca163d03ee9`, ELF `5c5166e7587235257d3e041b6a616b55929025f25d855d8713e98618080d3fb5`, an uncommitted tree on `f6f06bb` that reports that commit. This is all that ran on it:
+
+- **Checks:** 248 of 248 in QEMU. The default build is 2,977,344 bytes with no proof marker, the proof build 2,978,320 bytes with its marker once, and the test image 2,982,496 bytes.
+- **Frontend:** `npm run test:ci`, 123 of 123. This wasn't run before `f6f06bb` was pushed, and CI failed there on a test mock missing `mineOnBoot`, which this tree fixes. The firmware unit tests passed in CI.
+- **Settings:** the same five tags as below.
+- **Harness:** all 11 scenarios ended as in the table below, with the same serial failures. A pause during a lease still ended it, logged as `local_stop`.
+- **Acceptance:** `attempt_normal` 74, `attempt_diagnostic` 75, 76 and 77, and `attempt_heartbeat` 78 all passed, and the ledger read 8,640,000 ms. Heartbeat closes read 2,800 and 2,801 ms.
+- **Logs:** 16 device logs hold no `task_wdt`, "Task watchdog", `usb_tx_failure`, panic or abort line.
+- **Close probe:** 0 failures in 600 rounds, in 143 s.
+- **Restoration pages:** `completion`, `pause`, `cancel`, `expiry`, `monotonic_uncertainty`, `disconnect` and `reboot` passed in a full run. `authorization_negatives` failed there, as the next section says. Run with `reboot` before it, it then passed 3 of 3, each round rejecting the replayed renewal and Start.
+- **Acceptance through the page:** the trace dropped 0. Restart, receipts and the core dump self-test completed. The soak ran 28 renewals and 600,000 ms active with 34 shares accepted, and a later `attempt_normal` ran 9 renewals with 14 accepted. Cadence v1 passed its idle, USB and mining phases, with no send failures.
+- **Core dump:** 56,160 bytes decoded, with the receipt the image above reports.
+- **V2 and Noise:** through the harness, plain Noise and the channel were accepted, a wrong authority was rejected, a cancel was cancelled, and a share was acknowledged. Through Chrome, the three page attempts first failed to open the port (`serial_operation_failed`) straight after the harness runs. The cause wasn't established. Run after the restoration pages, Noise, the channel and a share were all accepted.
+- **Guards and fan stop:** the crash-loop guard paused after 3 abnormal resets, took a lease and cleared its streak. The restart guard held at 627 s after 34 connections, and a lease from the hold worked. A real fan stop ended a lease with `zero_fan`.
+- **Later logs:** 11 more device logs hold none of those lines. The two heartbeat closes they record read 2,801 ms.
+
+- **Silent chip and failed starts:** a temporary line, never committed, silenced the chip on a test image of this code, `esp-miner.bin` SHA-256 beginning `94ba32e4736f6c83`. Leases from a paused board were refused with `command_rejected` at 28.9 s, twice. After a resume, failures came 34, 64, 124 and 244 s apart in the device log, and the fifth held with `restart_guard` at 473 s. A lease from that hold was also refused at 28.9 s, and the board returned to the hold with power off.
+
+A race this rare can't be shown absent by passes on the clean image, so the delayed test is the evidence for the fix. It covers the pause. A hardware fault or pool failure flag set just as a lease opens would still end that lease, and that wasn't exercised.
+
+## A Start with no work
+
+`authorization_negatives` failed once on the clean image with `serial_failure: timeout`, 30,008 ms after the Gate sent Start, with the board otherwise healthy. No device log was captured for it, so its cause isn't established.
+
+The same outcome can be made on demand. On that image, on the 205, a lease whose pool accepted the connection and never answered ended in `serial_failure: timeout` at 30.2 s. The board logged "Lease did not reach work within 25000 ms" and began its stop, and 35 s after the Gate gave up it was paused with core voltage off. A failed Start runs the stop before it replies, and a live chip's stop takes about 20 s, so the refusal can't arrive inside the Gate's 30,000 ms limit. The silent chip fits because it has no live chip to stop, at 28.9 s.
+
+This is left as it is. From reading their source, not running them, Rust also stops before it replies, and its wait on a pool that never authorizes runs to the lease's end, so it should reach the same timeout. The Gate treats a timeout and a refused Start alike, closing with `control_failed` and sending no restore. No run here compared the two firmwares, and a pool that merely answers slowly wasn't tried.
+
+A pool that authorized and never sent a job ended the same way on this image, with `serial_failure: timeout` at 30.3 s and the board paused with core voltage off. Rust's source differs here, as "Differences from Rust" says.
 
 ## Preservation and the Close probe
 
@@ -160,7 +192,7 @@ A test pool that passes the upstream probe and fails every session ran against t
 - A lease ran from the hold and stopped, and the pause returned with the same reason.
 - With the real pools back, a resume cleared the reason and hashing returned about 13 s later.
 
-A chip whose replies were cut over JTAG then gave real failed starts: retries came 30, 60, 120 and 241 s apart, and the fifth failure held with `restart_guard` at 494 s. After a reset and a resume, hashing returned in about 10 s. A lease on the silent chip was refused with `command_rejected` at 28.86 s, inside the 30 s limit, with the pause and its reason returned afterwards. That lease figure is from the previous image, `981a6404`, which differs only in the heartbeat stamp below. Twice on this image the test's debugger script ended partway, so the chip wasn't silent throughout and the run says nothing either way.
+A chip whose replies were cut over JTAG then gave real failed starts: retries came 30, 60, 120 and 241 s apart, and the fifth failure held with `restart_guard` at 494 s. After a reset and a resume, hashing returned in about 10 s. Those retries came from this image, but a lease on the silent chip did not: the test's debugger script ended partway in every try on it, so those runs say nothing either way. A test image of the fixed tree, with one temporary line that cuts the chip's replies and was never committed, gave that lease twice from a paused board. Both were refused with `command_rejected` at 28.9 s, inside the 30 s limit, after 0 chips were detected and the 25 s wait for work ran out, and the board stayed paused with its core voltage off. A lease on a chip silenced from a held `restart_guard` state read the same on the earlier image `981a6404`, at 28.86 s, with the pause and its reason returned.
 
 ## Fixed by this evidence
 
@@ -191,6 +223,7 @@ Not in this image, and required by no Gate path:
 
 By construction, each small and stated so nobody relies on it:
 
+- **A Start's readiness:** here the board waits for its first work, up to 25 s, and a pool that authorizes and sends no job fails the Start. From its source, Rust reports running once a V1 pool authorizes or a V2 channel opens, without waiting for work, but Rust wasn't run against such a pool. This was kept because first work proves the pool and chip path. The owner hasn't ruled on it.
 - **V2 record times:** the revoked, shutdown and cooled event times are when the owner task noted them. The true times are in the qualification atoms.
 - **Block check:** `is_block` is masked during an attempt, since the fixture's target is easy.
 - **Act One:** it's built inside the handshake after connect, where Rust builds it before connect.

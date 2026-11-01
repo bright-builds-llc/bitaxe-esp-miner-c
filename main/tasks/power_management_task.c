@@ -184,9 +184,11 @@ void POWER_MANAGEMENT_task(void * pvParameters)
         bwg_boot_guard_tick(GLOBAL_STATE);
         bwg_local_guard_tick(GLOBAL_STATE, is_paused);
 
+        // Read before the flags. A lease opens after clearing its pause, so a pause read too early can't end that lease.
+        bool lease_was_open = bwg_revocation_snapshot().state == BWG_AUTHORITY_LEASED;
         // User pause, hardware fault, or all pools unreachable
         bool wants_local_stop = sys_module->mining_paused || sys_module->hardware_fault || sys_module->pools_unavailable;
-        if (wants_local_stop) {
+        if (wants_local_stop && lease_was_open) {
             bwg_revocation_revoke_lease(BWG_STOP_REASON_LOCAL_STOP);
         }
         bool revoked = bwg_revocation_stop_wanted();

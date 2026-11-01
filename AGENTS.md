@@ -132,7 +132,7 @@ This is `bright-builds-llc/bitaxe-esp-miner-c`: upstream's firmware plus the own
   - `main/CMakeLists.txt`: build the Gate's sources and wrap the panic and core-dump seams its fatal path uses.
   - `main/tasks/stratum_v1_client.c`: use a lease's pool, and leave the pool once revoked.
   - `main/tasks/power_management_task.c`: start and report the stop, end a lease on a local stop or overheat with its reading, tick the crash-loop guard, skip chip commands when a guard-paused boot never initialized it, record a lease's preparation, start the proof variant, and pace local restarts by the restart guard (`main/bwg/bwg_local_guard.c`), powering down after a failed start.
-  - `main/http_server/system_api_json.c`, `main/http_server/openapi.yaml`, `main/http_server/axe-os/src/app/services/system.service.ts`: report `miningActivity`, `pauseReason` and `mineOnBoot`.
+  - `main/http_server/system_api_json.c`, `main/http_server/openapi.yaml`, `main/http_server/axe-os/src/app/services/system.service.ts`, `main/http_server/axe-os/src/app/components/home/home.component.spec.ts`: report `miningActivity`, `pauseReason` and `mineOnBoot`.
   - `main/tasks/fan_controller_task.c`: hold the fan the stop or the fan qualification asks for, report when it applied, and keep the Gate's readings fresh while the stop has the power task.
   - `main/tasks/create_jobs_task.c`: forget earlier work once revoked.
   - `main/tasks/asic_result_task.c`, `components/asic/asic_common.c`: count a lease's nonces and what the ASIC path observed, record a V2 attempt's nonces by job slot, and treat none of them as a block, since the fixture's target is easy.
