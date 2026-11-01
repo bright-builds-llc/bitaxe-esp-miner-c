@@ -17,6 +17,10 @@
 #include "esp_heap_caps.h"
 #include "stratum_timing.h"
 #include "difficulty_controller.h"
+#include "bwg_mining.h"
+#include "bwg_revocation.h"
+#include "bwg_v2_gate.h"
+#include "bwg_v2_runtime.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -101,8 +105,11 @@ void stratum_v2_close_connection(GlobalState *GLOBAL_STATE)
         conn->noise_ctx = NULL;
     }
     if (transport != NULL) {
+        bwg_v2_note_begin(BWG_V2_OP_SOCKET_CLOSE);
         esp_transport_close(transport);
         esp_transport_destroy(transport);
+        bwg_v2_note_end(BWG_V2_OP_SOCKET_CLOSE, false);
+        bwg_v2_note_socket_closed();
     }
     if (conn != NULL) {
         clear_active_job_ids(conn->active_job_ids, &conn->active_job_ids_count);
@@ -149,12 +156,13 @@ int stratum_v2_submit_share(GlobalState *GLOBAL_STATE, const asic_job_t *active_
                                       sequence_number,
                                       sv2_job_id, nonce, active_job->ntime, rolled_version,
                                       en2_len > 0 ? extranonce_2 : NULL, en2_len);
-    if (len < 0) {
+    if (len < 0 || !bwg_v2_note_submission_begin(conn->channel_id, sv2_job_id, sequence_number, nonce, active_job->ntime, rolled_version)) {
         pthread_mutex_unlock(&GLOBAL_STATE->transport_mutex);
         return -1;
     }
 
     int ret = sv2_noise_send(conn->noise_ctx, transport, buf, len);
+    bwg_v2_note_submission_end(sequence_number, ret >= 0);
     if (ret >= 0) {
         stratum_v2_track_submit(sequence_number);
         if (sent_time_us) {
@@ -378,7 +386,7 @@ esp_err_t stratum_v2_run(GlobalState *GLOBAL_STATE, uint16_t pool_idx)
         return ESP_ERR_INVALID_ARG;
     }
 
-    PoolConfig *pool = &GLOBAL_STATE->SYSTEM_MODULE.pools[pool_idx];
+    PoolConfig *pool = bwg_mining_pool_or(&GLOBAL_STATE->SYSTEM_MODULE.pools[pool_idx]);
     char stratum_url[256] = {0};
     char user[256] = {0};
     char auth_pubkey[128] = {0};
@@ -394,6 +402,11 @@ esp_err_t stratum_v2_run(GlobalState *GLOBAL_STATE, uint16_t pool_idx)
     if (stratum_url[0] == '\0' || port == 0) {
         ESP_LOGE(TAG, "Invalid pool configuration for pool %u", pool_idx);
         return ESP_ERR_INVALID_ARG;
+    }
+
+    const bool observed = bwg_v2_share_live();
+    if (observed && !bwg_v2_note_preparing()) {
+        return ESP_FAIL;
     }
 
     if (s_v2_conn != NULL) {
@@ -449,7 +462,16 @@ esp_err_t stratum_v2_run(GlobalState *GLOBAL_STATE, uint16_t pool_idx)
 
     int64_t connect_start_us = esp_timer_get_time();
 
+    if (observed) {
+        bwg_v2_note_begin(BWG_V2_OP_CONNECT);
+    }
     esp_err_t ret = esp_transport_connect(transport, conn_info.host_ip, port, TRANSPORT_TIMEOUT_MS);
+    if (observed) {
+        bwg_v2_note_end(BWG_V2_OP_CONNECT, ret != ESP_OK);
+        if (ret == ESP_OK && !bwg_v2_note_connected(esp_transport_get_socket(transport))) {
+            ret = ESP_FAIL;
+        }
+    }
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "TCP connect failed to %s:%d (%s) (err %d)", stratum_url, port, conn_info.host_ip, ret);
         snprintf(GLOBAL_STATE->SYSTEM_MODULE.pool_connection_info,
@@ -470,7 +492,13 @@ esp_err_t stratum_v2_run(GlobalState *GLOBAL_STATE, uint16_t pool_idx)
 
     stratum_socket_set_options(transport);
 
+    if (observed) {
+        bwg_v2_note_begin(BWG_V2_OP_INITIATOR_CONSTRUCTION);
+    }
     sv2_noise_ctx_t *noise_ctx = sv2_noise_create();
+    if (observed) {
+        bwg_v2_note_end(BWG_V2_OP_INITIATOR_CONSTRUCTION, noise_ctx == NULL);
+    }
     if (!noise_ctx) {
         ESP_LOGE(TAG, "Failed to create noise context");
         snprintf(GLOBAL_STATE->SYSTEM_MODULE.pool_connection_info,
@@ -481,9 +509,13 @@ esp_err_t stratum_v2_run(GlobalState *GLOBAL_STATE, uint16_t pool_idx)
         return ESP_FAIL;
     }
     conn->noise_ctx = noise_ctx;
+    if (observed) {
+        sv2_noise_set_observer(noise_ctx, bwg_v2_noise_observer());
+    }
 
     uint8_t auth_key[SV2_AUTHORITY_PUBKEY_SIZE];
-    bool has_auth = stratum_v2_load_authority_pubkey(auth_key, auth_pubkey[0] ? auth_pubkey : NULL);
+    bool has_auth = bwg_mining_lease_authority_key(auth_key) ||
+                    stratum_v2_load_authority_pubkey(auth_key, auth_pubkey[0] ? auth_pubkey : NULL);
 
     if (require_auth && !has_auth) {
         ESP_LOGE(TAG, "SV2 authentication required but no authority pubkey configured, refusing to connect");
@@ -509,6 +541,10 @@ esp_err_t stratum_v2_run(GlobalState *GLOBAL_STATE, uint16_t pool_idx)
         free(frame_buf);
         free(recv_buf);
         return ESP_FAIL;
+    }
+
+    if (observed) {
+        bwg_v2_note_authenticated();
     }
 
     const char *ip_protocol = (conn_info.addr_family == AF_INET6) ? "IPv6" : "IPv4";
@@ -727,7 +763,7 @@ esp_err_t stratum_v2_run(GlobalState *GLOBAL_STATE, uint16_t pool_idx)
             break;
         }
 
-        if (GLOBAL_STATE->SYSTEM_MODULE.mining_paused || GLOBAL_STATE->SYSTEM_MODULE.hardware_fault) {
+        if (GLOBAL_STATE->SYSTEM_MODULE.mining_paused || GLOBAL_STATE->SYSTEM_MODULE.hardware_fault || bwg_revocation_stop_wanted()) {
             ESP_LOGI(TAG, "Mining paused, disconnecting from SV2 pool");
             run_result = ESP_OK;
             break;

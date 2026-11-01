@@ -1,0 +1,112 @@
+[
+  {
+    "id": "wrong_authority_role",
+    "operation": "verify_with_update_key",
+    "parameters": {
+      "role": "update_authority"
+    },
+    "expectedError": "invalid_authorization"
+  },
+  {
+    "id": "changed_request",
+    "operation": "change_stratum_terms",
+    "parameters": {
+      "changedPassword": "changed"
+    },
+    "expectedError": "invalid_authorization"
+  },
+  {
+    "id": "changed_context",
+    "operation": "change_control_session_binding",
+    "parameters": {
+      "controlSessionBindingSha256": "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"
+    },
+    "expectedError": "invalid_authorization"
+  },
+  {
+    "id": "same_nonce_different_identity",
+    "operation": "change_verified_possession_transcript",
+    "parameters": {
+      "controlSessionBindingSha256": "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"
+    },
+    "expectedError": "invalid_authorization"
+  },
+  {
+    "id": "replayed_sequence",
+    "operation": "reuse_accepted_sequence",
+    "parameters": {
+      "highWater": "1",
+      "presentedSequence": "1"
+    },
+    "expectedError": "replay"
+  },
+  {
+    "id": "withheld_context",
+    "operation": "present_after_context_expiry",
+    "parameters": {
+      "establishedAtMonotonicMilliseconds": 1000,
+      "presentedAtMonotonicMilliseconds": 61000
+    },
+    "expectedError": "context_expired"
+  },
+  {
+    "id": "post_restore_context",
+    "operation": "present_after_restoration",
+    "parameters": {
+      "lifecycleEvent": "restoration"
+    },
+    "expectedError": "context_invalid"
+  },
+  {
+    "id": "post_reboot_context",
+    "operation": "present_after_reboot",
+    "parameters": {
+      "lifecycleEvent": "reboot"
+    },
+    "expectedError": "context_invalid"
+  },
+  {
+    "id": "cross_session_replay",
+    "operation": "reuse_sequence_in_new_context",
+    "parameters": {
+      "controlSessionBindingSha256": "UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU",
+      "highWater": "1",
+      "presentedSequence": "1"
+    },
+    "expectedError": "replay"
+  },
+  {
+    "id": "monotonic_reset",
+    "operation": "present_after_monotonic_reset",
+    "parameters": {
+      "establishedAtMonotonicMilliseconds": 1000,
+      "presentedAtMonotonicMilliseconds": 999
+    },
+    "expectedError": "monotonic_invalid"
+  },
+  {
+    "id": "corrupt_high_water",
+    "operation": "load_corrupt_high_water",
+    "parameters": {
+      "corruptHighWater": "-1",
+      "presentedSequence": "1"
+    },
+    "expectedError": "state_invalid"
+  },
+  {
+    "id": "sequence_overflow",
+    "operation": "allocate_after_u64_max",
+    "parameters": {
+      "currentSequence": "18446744073709551615"
+    },
+    "expectedError": "sequence_exhausted"
+  },
+  {
+    "id": "authorization_513_bytes",
+    "operation": "oversized_authorization",
+    "parameters": {
+      "authorizationBytes": 513
+    },
+    "expectedError": "invalid_authorization"
+  }
+]

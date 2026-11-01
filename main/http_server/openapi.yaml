@@ -292,6 +292,7 @@ components:
         - minFanSpeed
         - nominalVoltage
         - overheat_mode
+        - mineOnBoot
         - overclockEnabled
         - primaryPoolIndex
         - secondaryPoolIndex
@@ -528,6 +529,9 @@ components:
         overheat_mode:
           type: number
           description: Overheat protection mode
+        mineOnBoot:
+          type: integer
+          description: Whether the board starts mining by itself after a boot (1) or waits (0)
         overclockEnabled:
           type: integer
           description: Set custom voltage/frequency in AxeOS
@@ -754,6 +758,14 @@ components:
         miningPaused:
           type: boolean
           description: Whether mining is currently paused
+        miningActivity:
+          type: string
+          enum: [paused, active, safe_blocked, stopping]
+          description: What mining is doing now
+        pauseReason:
+          type: string
+          enum: [crash_loop, overheat, restart_guard]
+          description: Why the device paused itself. Absent when it has not, including for an operator's own pause
         statsLimit:
           type: integer
           description: Maximum number of statistics data points
@@ -1036,6 +1048,10 @@ components:
           enum: [0]
           examples:
             - 0
+        mineOnBoot:
+          type: integer
+          description: Whether the board starts mining by itself after a boot (1) or waits (0)
+          enum: [0, 1]
         overclockEnabled:
           type: integer
           description: Set custom voltage/frequency in AxeOS (0=disabled, 1=enabled)

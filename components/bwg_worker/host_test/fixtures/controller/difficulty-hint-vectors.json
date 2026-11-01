@@ -1,0 +1,143 @@
+{
+  "classification": "public-rfc8032-conformance-only",
+  "trust": {
+    "profile": "bwg-worker-deployment-trust/0.2",
+    "issuer": "fixture-qualification-attempt",
+    "audience": "bwg-worker-controller/0.4",
+    "role": "work_lease_authority",
+    "keys": [
+      {
+        "kid": "rfc8032",
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+        "alg": "Ed25519",
+        "use": "sig",
+        "key_ops": [
+          "verify"
+        ]
+      }
+    ]
+  },
+  "vectors": [
+    {
+      "id": "omitted",
+      "input": {
+        "operation": "start",
+        "activeChallengeId": "challenge_00000000000000000000000000000001",
+        "controlSessionBindingSha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "request": {
+          "protocolVersion": "bwg-worker-controller/0.4",
+          "durationMilliseconds": 60000,
+          "renewAfterMilliseconds": 20000,
+          "qualificationAttempt": {
+            "schema": "worker-qualification-attempt-v1",
+            "id": "AAAAAAAAAAAAAAAAAAAAAA",
+            "ordinal": 1,
+            "purpose": "diagnostic",
+            "maximumActiveMilliseconds": 30000
+          },
+          "leaseId": "lease_fixture_01",
+          "challengeId": "challenge_00000000000000000000000000000001",
+          "stratum": {
+            "endpoint": "stratum+tcp://127.0.0.1:3333/",
+            "username": "fixture-session-user",
+            "password": "fixture-session-password"
+          }
+        }
+      },
+      "authorization": "eyJhbGciOiJFZDI1NTE5Iiwia2lkIjoicmZjODAzMiIsInR5cCI6ImJ3Zy13b3JrZXItbGVhc2UtYXV0aG9yaXphdGlvbitqd3MifQ.eyJjb250cm9sU2Vzc2lvbkJpbmRpbmdTaGEyNTYiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIiwib3BlcmF0aW9uIjoic3RhcnQiLCJyZXF1ZXN0U2hhMjU2IjoibG85NF8wMjFYclhQUGZxRzRWWjRLenR5U2pRZmRqczdKYXo0bUVSMjNHRSIsInNlcXVlbmNlIjoiMSJ9.lQ6zVxYgw6vRBInimlO_1u4C5OFjeWTvsYpdIwwRljFD7fqUNinnVJv0u8oQH360PFe3kmm8-TU0qWsItq2vDQ",
+      "canonical_request": "{\"challengeId\":\"challenge_00000000000000000000000000000001\",\"durationMilliseconds\":60000,\"leaseId\":\"lease_fixture_01\",\"protocolVersion\":\"bwg-worker-controller/0.4\",\"qualificationAttempt\":{\"id\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"maximumActiveMilliseconds\":30000,\"ordinal\":1,\"purpose\":\"diagnostic\",\"schema\":\"worker-qualification-attempt-v1\"},\"renewAfterMilliseconds\":20000,\"stratum\":{\"endpoint\":\"stratum+tcp://127.0.0.1:3333/\",\"password\":\"fixture-session-password\",\"username\":\"fixture-session-user\"}}"
+    },
+    {
+      "id": "hint_0",
+      "input": {
+        "operation": "start",
+        "activeChallengeId": "challenge_00000000000000000000000000000001",
+        "controlSessionBindingSha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "request": {
+          "protocolVersion": "bwg-worker-controller/0.4",
+          "durationMilliseconds": 60000,
+          "renewAfterMilliseconds": 20000,
+          "qualificationAttempt": {
+            "schema": "worker-qualification-attempt-v1",
+            "id": "AAAAAAAAAAAAAAAAAAAAAA",
+            "ordinal": 1,
+            "purpose": "diagnostic",
+            "maximumActiveMilliseconds": 30000
+          },
+          "leaseId": "lease_fixture_01",
+          "challengeId": "challenge_00000000000000000000000000000001",
+          "stratum": {
+            "endpoint": "stratum+tcp://127.0.0.1:3333/",
+            "username": "fixture-session-user",
+            "password": "fixture-session-password",
+            "suggestedDifficulty": 0
+          }
+        }
+      },
+      "authorization": "eyJhbGciOiJFZDI1NTE5Iiwia2lkIjoicmZjODAzMiIsInR5cCI6ImJ3Zy13b3JrZXItbGVhc2UtYXV0aG9yaXphdGlvbitqd3MifQ.eyJjb250cm9sU2Vzc2lvbkJpbmRpbmdTaGEyNTYiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIiwib3BlcmF0aW9uIjoic3RhcnQiLCJyZXF1ZXN0U2hhMjU2IjoicmRxMDUyVjFjejZwTHZXVWxTQmZ0enhZUE1sWmJFZUt3YUh5Q21Gb1hqcyIsInNlcXVlbmNlIjoiMiJ9.46nsdEqLXE3J9mS6ZYgyPIq-7vcT_h96GtLZ7iWrqLoGKkSuD805RxuuYNek80J_rBA7EFbB546jps4jUnKWAw",
+      "canonical_request": "{\"challengeId\":\"challenge_00000000000000000000000000000001\",\"durationMilliseconds\":60000,\"leaseId\":\"lease_fixture_01\",\"protocolVersion\":\"bwg-worker-controller/0.4\",\"qualificationAttempt\":{\"id\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"maximumActiveMilliseconds\":30000,\"ordinal\":1,\"purpose\":\"diagnostic\",\"schema\":\"worker-qualification-attempt-v1\"},\"renewAfterMilliseconds\":20000,\"stratum\":{\"endpoint\":\"stratum+tcp://127.0.0.1:3333/\",\"password\":\"fixture-session-password\",\"suggestedDifficulty\":0,\"username\":\"fixture-session-user\"}}"
+    },
+    {
+      "id": "hint_1000",
+      "input": {
+        "operation": "start",
+        "activeChallengeId": "challenge_00000000000000000000000000000001",
+        "controlSessionBindingSha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "request": {
+          "protocolVersion": "bwg-worker-controller/0.4",
+          "durationMilliseconds": 60000,
+          "renewAfterMilliseconds": 20000,
+          "qualificationAttempt": {
+            "schema": "worker-qualification-attempt-v1",
+            "id": "AAAAAAAAAAAAAAAAAAAAAA",
+            "ordinal": 1,
+            "purpose": "diagnostic",
+            "maximumActiveMilliseconds": 30000
+          },
+          "leaseId": "lease_fixture_01",
+          "challengeId": "challenge_00000000000000000000000000000001",
+          "stratum": {
+            "endpoint": "stratum+tcp://127.0.0.1:3333/",
+            "username": "fixture-session-user",
+            "password": "fixture-session-password",
+            "suggestedDifficulty": 1000
+          }
+        }
+      },
+      "authorization": "eyJhbGciOiJFZDI1NTE5Iiwia2lkIjoicmZjODAzMiIsInR5cCI6ImJ3Zy13b3JrZXItbGVhc2UtYXV0aG9yaXphdGlvbitqd3MifQ.eyJjb250cm9sU2Vzc2lvbkJpbmRpbmdTaGEyNTYiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIiwib3BlcmF0aW9uIjoic3RhcnQiLCJyZXF1ZXN0U2hhMjU2IjoicVVVRGZuTXJVc3BSWm5OT3hKOV9vS2tsMUh2ZG5idk9qUy1OYkJBUGEwcyIsInNlcXVlbmNlIjoiMyJ9.qOip44rWZGINuiBD3GLRN2bSZm_jcuWvFeJU42VgAt8HDTdvcZjl7YB4dLL7fxvo1pVvQFRGmeh7BIAci4UaDg",
+      "canonical_request": "{\"challengeId\":\"challenge_00000000000000000000000000000001\",\"durationMilliseconds\":60000,\"leaseId\":\"lease_fixture_01\",\"protocolVersion\":\"bwg-worker-controller/0.4\",\"qualificationAttempt\":{\"id\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"maximumActiveMilliseconds\":30000,\"ordinal\":1,\"purpose\":\"diagnostic\",\"schema\":\"worker-qualification-attempt-v1\"},\"renewAfterMilliseconds\":20000,\"stratum\":{\"endpoint\":\"stratum+tcp://127.0.0.1:3333/\",\"password\":\"fixture-session-password\",\"suggestedDifficulty\":1000,\"username\":\"fixture-session-user\"}}"
+    },
+    {
+      "id": "hint_65535",
+      "input": {
+        "operation": "start",
+        "activeChallengeId": "challenge_00000000000000000000000000000001",
+        "controlSessionBindingSha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "request": {
+          "protocolVersion": "bwg-worker-controller/0.4",
+          "durationMilliseconds": 60000,
+          "renewAfterMilliseconds": 20000,
+          "qualificationAttempt": {
+            "schema": "worker-qualification-attempt-v1",
+            "id": "AAAAAAAAAAAAAAAAAAAAAA",
+            "ordinal": 1,
+            "purpose": "diagnostic",
+            "maximumActiveMilliseconds": 30000
+          },
+          "leaseId": "lease_fixture_01",
+          "challengeId": "challenge_00000000000000000000000000000001",
+          "stratum": {
+            "endpoint": "stratum+tcp://127.0.0.1:3333/",
+            "username": "fixture-session-user",
+            "password": "fixture-session-password",
+            "suggestedDifficulty": 65535
+          }
+        }
+      },
+      "authorization": "eyJhbGciOiJFZDI1NTE5Iiwia2lkIjoicmZjODAzMiIsInR5cCI6ImJ3Zy13b3JrZXItbGVhc2UtYXV0aG9yaXphdGlvbitqd3MifQ.eyJjb250cm9sU2Vzc2lvbkJpbmRpbmdTaGEyNTYiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIiwib3BlcmF0aW9uIjoic3RhcnQiLCJyZXF1ZXN0U2hhMjU2IjoicDdFbS1hWXZ3Y3VwRVdVUEc2VHE5SzR5SUpHQi1TRWRmMGNmYlZDdlJ2VSIsInNlcXVlbmNlIjoiNCJ9.sZdr_JvpBGenX5SRfawUiTR00z1aZMPc_Utwq1MXrujXhjAAB2KgWBB7xfwxAo9VtiW0YmYPA42JZnRW3ZNsDw",
+      "canonical_request": "{\"challengeId\":\"challenge_00000000000000000000000000000001\",\"durationMilliseconds\":60000,\"leaseId\":\"lease_fixture_01\",\"protocolVersion\":\"bwg-worker-controller/0.4\",\"qualificationAttempt\":{\"id\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"maximumActiveMilliseconds\":30000,\"ordinal\":1,\"purpose\":\"diagnostic\",\"schema\":\"worker-qualification-attempt-v1\"},\"renewAfterMilliseconds\":20000,\"stratum\":{\"endpoint\":\"stratum+tcp://127.0.0.1:3333/\",\"password\":\"fixture-session-password\",\"suggestedDifficulty\":65535,\"username\":\"fixture-session-user\"}}"
+    }
+  ]
+}

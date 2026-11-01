@@ -1,0 +1,46 @@
+#ifndef BWG_TEST_SUITES_H
+#define BWG_TEST_SUITES_H
+
+void bwg_tests_codec(void);
+void bwg_tests_json(void);
+void bwg_tests_frame(void);
+void bwg_tests_link(void);
+void bwg_tests_writer(void);
+void bwg_tests_possession(void);
+void bwg_tests_trust(void);
+void bwg_tests_lease(void);
+void bwg_tests_lease_auth(void);
+void bwg_tests_controller_session(void);
+void bwg_tests_controller_lease(void);
+void bwg_tests_controller_wire(void);
+void bwg_tests_controller_gate(void);
+void bwg_tests_link_session(void);
+void bwg_tests_writer_output(void);
+void bwg_tests_writer_close(void);
+void bwg_tests_crash_streak(void);
+void bwg_tests_progress(void);
+void bwg_tests_ledger(void);
+void bwg_tests_budget(void);
+void bwg_tests_controller_budget(void);
+void bwg_tests_controller_evidence(void);
+void bwg_tests_trace(void);
+void bwg_tests_cadence(void);
+void bwg_tests_v2_record(void);
+void bwg_tests_v2_status(void);
+void bwg_tests_controller_v2(void);
+void bwg_tests_noise_record(void);
+void bwg_tests_controller_noise(void);
+void bwg_tests_lease_auth_shape(void);
+void bwg_tests_frame_stream(void);
+void bwg_tests_controller_stop(void);
+void bwg_tests_controller_probe(void);
+void bwg_tests_controller_trust(void);
+void bwg_tests_seq_doc(void);
+void bwg_tests_controller_reviews(void);
+void bwg_tests_controller_stimulus(void);
+void bwg_tests_cutoff(void);
+void bwg_tests_restart_guard(void);
+void bwg_tests_core_dump_receipt(void);
+void bwg_tests_preparation_receipt(void);
+
+#endif // BWG_TEST_SUITES_H

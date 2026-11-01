@@ -10,6 +10,9 @@
 #include "asic.h"
 #include "freertos/task.h"
 #include "scoreboard.h"
+#include "bwg_v2_runtime.h"
+#include "bwg_progress.h"
+#include "bwg_revocation.h"
 #include "self_test.h"
 
 static const char *TAG = "asic_result";
@@ -29,20 +32,24 @@ void ASIC_result_task(void *pvParameters)
 
         if (asic_result == NULL)
         {
+            bwg_progress_note(BWG_PROGRESS_POLL_EMPTY);
             continue;
         }
 
         if (asic_result->register_type != REGISTER_INVALID) {
+            bwg_progress_note(BWG_PROGRESS_POLL_REGISTER);
             hashrate_monitor_register_read(GLOBAL_STATE, asic_result->register_type, asic_result->asic_nr, asic_result->value, asic_result->timestamp_us);
             continue;
         }
 
+        bwg_progress_note(BWG_PROGRESS_POLL_NONCE);
         const asic_job_t *job = &asic_result->job;
         uint8_t hash_result[32];
         if (!mining_nonce_hash(job, asic_result->nonce, asic_result->rolled_version, hash_result)) {
             ESP_LOGE(TAG, "Failed to compute nonce hash, discarding result");
             continue;
         }
+        bwg_revocation_note_nonce();
 
         if (GLOBAL_STATE->SELF_TEST_MODULE.is_active) {
             self_test_record_nonce(GLOBAL_STATE, hash_result);
@@ -53,12 +60,19 @@ void ASIC_result_task(void *pvParameters)
         bool is_share = uint256_lte(hash_result, job->pool_target);
         uint8_t network_target[32];
         nbits_to_target(job->nbits, network_target);
-        bool is_block = uint256_lte(hash_result, network_target);
+        // A V2 attempt's fixture sets a regtest target, which would make every nonce a block.
+        bool is_block = uint256_lte(hash_result, network_target) && !bwg_v2_share_live();
 
         // 2. Submit if it meets share or block target IMMEDIATELY
+        bwg_progress_note(is_share || is_block ? BWG_PROGRESS_QUALIFIED_CANDIDATE : BWG_PROGRESS_BELOW_POOL_TARGET);
+        bwg_progress_note_expected_filter(hash_result);
         if (is_share || is_block) {
+            bwg_v2_note_nonce(job, asic_result->job_slot, asic_result->nonce, asic_result->rolled_version, asic_result->asic_nr, asic_result->core_id, asic_result->small_core_id);
             uint64_t sent_time_us = 0;
             int submit_result = stratum_submit_share(GLOBAL_STATE, job, asic_result->nonce, asic_result->rolled_version, &sent_time_us);
+            if (submit_result < 0) {
+                bwg_progress_note(BWG_PROGRESS_BLOCKED_OTHER);
+            }
             if (submit_result >= 0 && sent_time_us > 0) {
                 float process_time = (sent_time_us - asic_result->timestamp_us) / 1000.0f;
                 GLOBAL_STATE->SYSTEM_MODULE.process_time = process_time;

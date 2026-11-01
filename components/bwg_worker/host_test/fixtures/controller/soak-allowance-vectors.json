@@ -1,0 +1,112 @@
+{
+  "classification": "public-rfc8032-conformance-only",
+  "trust": {
+    "profile": "bwg-worker-deployment-trust/0.2",
+    "issuer": "fixture-soak-allowance",
+    "audience": "bwg-worker-controller/0.4",
+    "role": "work_lease_authority",
+    "keys": [
+      {
+        "kid": "rfc8032",
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+        "alg": "Ed25519",
+        "use": "sig",
+        "key_ops": [
+          "verify"
+        ]
+      }
+    ]
+  },
+  "vectors": [
+    {
+      "input": {
+        "operation": "start",
+        "activeChallengeId": "challenge_00000000000000000000000000000001",
+        "controlSessionBindingSha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "request": {
+          "protocolVersion": "bwg-worker-controller/0.4",
+          "durationMilliseconds": 60000,
+          "renewAfterMilliseconds": 20000,
+          "soakAllowance": {
+            "schema": "worker-soak-allowance-v2",
+            "id": "AAAAAAAAAAAAAAAAAAAAAA",
+            "ordinal": 1,
+            "maximumActiveMilliseconds": 600000
+          },
+          "leaseId": "lease_fixture_01",
+          "challengeId": "challenge_00000000000000000000000000000001",
+          "stratum": {
+            "endpoint": "stratum+tcp://127.0.0.1:3333/",
+            "username": "fixture-session-user",
+            "password": "fixture-session-password"
+          }
+        }
+      },
+      "grant": {
+        "protocolVersion": "bwg-worker-controller/0.4",
+        "durationMilliseconds": 60000,
+        "renewAfterMilliseconds": 20000,
+        "soakAllowance": {
+          "schema": "worker-soak-allowance-v2",
+          "id": "AAAAAAAAAAAAAAAAAAAAAA",
+          "ordinal": 1,
+          "maximumActiveMilliseconds": 600000
+        },
+        "leaseId": "lease_fixture_01",
+        "challengeId": "challenge_00000000000000000000000000000001",
+        "stratum": {
+          "endpoint": "stratum+tcp://127.0.0.1:3333/",
+          "username": "fixture-session-user",
+          "password": "fixture-session-password"
+        },
+        "authorization": "eyJhbGciOiJFZDI1NTE5Iiwia2lkIjoicmZjODAzMiIsInR5cCI6ImJ3Zy13b3JrZXItbGVhc2UtYXV0aG9yaXphdGlvbitqd3MifQ.eyJjb250cm9sU2Vzc2lvbkJpbmRpbmdTaGEyNTYiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIiwib3BlcmF0aW9uIjoic3RhcnQiLCJyZXF1ZXN0U2hhMjU2IjoiaXpYYnJIWmd6dF9HYjhIdmVyUG9RWGJEeDlmRmFZVGtsdjlfT3JkUkpzZyIsInNlcXVlbmNlIjoiMSJ9.k6j7tTK7WKXPfobnAA_NO9_2G25LWytr8FPsJnfFM7wMBAan2NyDRvxgoPMR7SKZc23PZc7PpFu2z1mNNqNsAQ"
+      }
+    },
+    {
+      "input": {
+        "operation": "start",
+        "activeChallengeId": "challenge_00000000000000000000000000000001",
+        "controlSessionBindingSha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "request": {
+          "protocolVersion": "bwg-worker-controller/0.4",
+          "durationMilliseconds": 60000,
+          "renewAfterMilliseconds": 20000,
+          "soakAllowance": {
+            "schema": "worker-soak-allowance-v2",
+            "id": "AAAAAAAAAAAAAAAAAAAAAA",
+            "ordinal": 2,
+            "maximumActiveMilliseconds": 600000
+          },
+          "leaseId": "lease_fixture_01",
+          "challengeId": "challenge_00000000000000000000000000000001",
+          "stratum": {
+            "endpoint": "stratum+tcp://127.0.0.1:3333/",
+            "username": "fixture-session-user",
+            "password": "fixture-session-password"
+          }
+        }
+      },
+      "grant": {
+        "protocolVersion": "bwg-worker-controller/0.4",
+        "durationMilliseconds": 60000,
+        "renewAfterMilliseconds": 20000,
+        "soakAllowance": {
+          "schema": "worker-soak-allowance-v2",
+          "id": "AAAAAAAAAAAAAAAAAAAAAA",
+          "ordinal": 2,
+          "maximumActiveMilliseconds": 600000
+        },
+        "leaseId": "lease_fixture_01",
+        "challengeId": "challenge_00000000000000000000000000000001",
+        "stratum": {
+          "endpoint": "stratum+tcp://127.0.0.1:3333/",
+          "username": "fixture-session-user",
+          "password": "fixture-session-password"
+        },
+        "authorization": "eyJhbGciOiJFZDI1NTE5Iiwia2lkIjoicmZjODAzMiIsInR5cCI6ImJ3Zy13b3JrZXItbGVhc2UtYXV0aG9yaXphdGlvbitqd3MifQ.eyJjb250cm9sU2Vzc2lvbkJpbmRpbmdTaGEyNTYiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIiwib3BlcmF0aW9uIjoic3RhcnQiLCJyZXF1ZXN0U2hhMjU2IjoiSXVRWW5taVhFM3JXZ2NQMHNEXy1Odk1TY3VSWGk2MGgwNFFZYV9ieUlSNCIsInNlcXVlbmNlIjoiMiJ9.t6_nZxX9w4LPHBzYOCVCfLgSAcjUFk77yy6g3MJKJS1eCiVeYByYfEPrWxnHAQq9r1eoS3U7annHlwpNb_I8Ag"
+      }
+    }
+  ]
+}

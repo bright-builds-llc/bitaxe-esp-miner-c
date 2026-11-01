@@ -77,6 +77,7 @@ static Settings settings[NVS_CONFIG_COUNT] = {
     [NVS_CONFIG_MIN_FAN_SPEED]                         = {.nvs_key_name = "minfanspeed",     .type = TYPE_U16,   .default_value = {.u16 = 25},                                          .rest_name = "minFanSpeed",                        .min = 0,  .max = 99},
     [NVS_CONFIG_TEMP_TARGET]                           = {.nvs_key_name = "temptarget",      .type = TYPE_U16,   .default_value = {.u16 = 60},                                          .rest_name = "temptarget",                         .min = 35, .max = 66},
     [NVS_CONFIG_OVERHEAT_MODE]                         = {.nvs_key_name = "overheat_mode",   .type = TYPE_BOOL,                                                                         .rest_name = "overheat_mode",                      .min = 0,  .max = 0},
+    [NVS_CONFIG_MINE_ON_BOOT]                          = {.nvs_key_name = "mineonboot",      .type = TYPE_BOOL,  .default_value = {.b = true},                                          .rest_name = "mineOnBoot",                         .min = 0,  .max = 1},
 
     [NVS_CONFIG_USE_CUSTOM_WWW]                        = {.nvs_key_name = "use_custom_www",  .type = TYPE_BOOL,  .default_value = {.b = false},                                         .rest_name = "useCustomWWW",                       .min = 0, .max = 1},
     [NVS_CONFIG_LAST_FW_FINGERPRINT]                   = {.nvs_key_name = "last_fw_fp",      .type = TYPE_STR,   .default_value = {.str = ""}},

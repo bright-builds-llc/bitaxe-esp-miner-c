@@ -8,6 +8,7 @@
 #include "nvs_config.h"
 #include "thermal.h"
 #include "PID.h"
+#include "bwg_stop.h"
 
 #define EPSILON 0.0001f
 #define POLL_TIME_MS 100
@@ -68,8 +69,11 @@ void FAN_CONTROLLER_task(void * pvParameters)
     TickType_t taskWakeTime = xTaskGetTickCount();
 
     while (1) {
+        const int gate_fan_hold = bwg_stop_fan_override();
         if (nvs_config_get_bool(NVS_CONFIG_OVERHEAT_MODE)) {
             update_fan_speed(GLOBAL_STATE, 100.0f, "Overheat");
+        } else if (gate_fan_hold >= 0) {
+            update_fan_speed(GLOBAL_STATE, (float) gate_fan_hold, "Gate stop");
         } else if (GLOBAL_STATE->SYSTEM_MODULE.mining_paused) {
             update_fan_speed(GLOBAL_STATE, 30.0f, "Paused");
         } else if (GLOBAL_STATE->SYSTEM_MODULE.pools_unavailable) {
@@ -133,6 +137,8 @@ void FAN_CONTROLLER_task(void * pvParameters)
 
         power_management->fan_rpm = Thermal_get_fan_speed(&GLOBAL_STATE->DEVICE_CONFIG);
         power_management->fan2_rpm = Thermal_get_fan2_speed(&GLOBAL_STATE->DEVICE_CONFIG);
+        bwg_stop_note_fan_sample(gate_fan_hold);
+        bwg_stop_sample_while_stopping(GLOBAL_STATE);
 
         vTaskDelayUntil(&taskWakeTime, POLL_TIME_MS / portTICK_PERIOD_MS);
     }

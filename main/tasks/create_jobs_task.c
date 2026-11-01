@@ -11,6 +11,7 @@
 
 #include "asic.h"
 #include "difficulty_controller.h"
+#include "bwg_revocation.h"
 #include "system.h"
 #include "utils.h"
 
@@ -54,6 +55,13 @@ void create_jobs_task(void *pvParameters)
     ESP_LOGI(TAG, "ASIC Ready!");
 
     while (1) {
+        if (bwg_revocation_stop_wanted()) {
+            // Authority closed: work from before the stop belongs to another pool or lease.
+            current_work = NULL;
+            current_work_sent = false;
+            current_version_mask = 0;
+        }
+
         uint64_t start_time = esp_timer_get_time();
         uint32_t slot_notify = 0;
         TickType_t wait_ticks = (timeout_ms > 0) ? pdMS_TO_TICKS(timeout_ms) : 0;

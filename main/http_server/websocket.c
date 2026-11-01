@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "bwg_telemetry_cadence.h"
 #include <unistd.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -102,10 +103,10 @@ void websocket_remove_client(int fd)
     xSemaphoreGive(clients_mutex);
 }
 
-void websocket_send_to_client(int fd, httpd_ws_frame_t *pkt)
+esp_err_t websocket_send_to_client(int fd, httpd_ws_frame_t *pkt)
 {
     if (server_handle == NULL || fd == -1)
-        return;
+        return ESP_ERR_INVALID_STATE;
 
     esp_err_t err = httpd_ws_send_frame_async(server_handle, fd, pkt);
 
@@ -127,6 +128,7 @@ void websocket_send_to_client(int fd, httpd_ws_frame_t *pkt)
                 close_err);
         }
     }
+    return err;
 }
 
 void websocket_broadcast(WebSocketClientType type, httpd_ws_frame_t *pkt)
@@ -150,7 +152,10 @@ void websocket_broadcast(WebSocketClientType type, httpd_ws_frame_t *pkt)
     xSemaphoreGive(clients_mutex);
 
     for (int i = 0; i < n; i++) {
-        websocket_send_to_client(fds[i], pkt);
+        const esp_err_t sent = websocket_send_to_client(fds[i], pkt);
+        if (type == WS_TYPE_API) {
+            bwg_telemetry_note_send(sent == ESP_OK);
+        }
     }
 }
 

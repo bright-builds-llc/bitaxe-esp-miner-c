@@ -198,6 +198,7 @@ export class SystemApiService {
         boardtemp1: 30,
         boardtemp2: 40,
         overheat_mode: 0,
+        mineOnBoot: 1,
         statsLimit: 720,
 
         partitions: [
@@ -227,6 +228,7 @@ export class SystemApiService {
         coinbaseOthersValueSatoshis: 0,
         coinbasePayoutStatus: 'verified' as const,
         miningPaused: false,
+        miningActivity: 'active' as const,
         workReceived: 42,
       }
     ).pipe(delay(1000));

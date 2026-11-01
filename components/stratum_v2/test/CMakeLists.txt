@@ -1,3 +1,3 @@
 idf_component_register(SRC_DIRS "."
                     INCLUDE_DIRS "."
-                    REQUIRES cmock stratum_v2)
+                    REQUIRES cmock stratum_v2 esp_timer)

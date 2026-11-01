@@ -1,0 +1,17 @@
+{
+  "operation": "start",
+  "activeChallengeId": "challenge_00000000000000000000000000000001",
+  "controlSessionBindingSha256": "jEc1ro90lL2fX0ZozUbY0XpmxrC46gEkEUKKTyGj0Zs",
+  "request": {
+    "protocolVersion": "bwg-worker-controller/0.4",
+    "leaseId": "lease_fixture_01",
+    "challengeId": "challenge_00000000000000000000000000000001",
+    "durationMilliseconds": 60000,
+    "renewAfterMilliseconds": 20000,
+    "stratum": {
+      "endpoint": "stratum+tcp://127.0.0.1:3333/",
+      "username": "fixture-session-user",
+      "password": "fixture-session-password"
+    }
+  }
+}

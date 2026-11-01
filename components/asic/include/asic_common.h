@@ -55,6 +55,7 @@ typedef struct task_result
     // -- job result response
     // Snapshot matched while decoding the response; survives active-slot reuse.
     asic_job_t job;
+    uint8_t job_slot;
     uint32_t nonce;
     uint32_t rolled_version;
     // ---- register response

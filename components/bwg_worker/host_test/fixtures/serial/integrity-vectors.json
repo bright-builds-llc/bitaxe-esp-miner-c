@@ -1,0 +1,41 @@
+{
+  "profile": "bwg-worker-serial/0.2",
+  "vectors": [
+    {
+      "id": "empty",
+      "payloadJson": "{}",
+      "payloadBytes": 2,
+      "payloadSha256": "RBNvo1WzZ4oRRq0W9-hknpT7T8If536DEMBg9hyq_4o"
+    },
+    {
+      "id": "key_order",
+      "payloadJson": "{\"z\":1,\"a\":2}",
+      "payloadBytes": 13,
+      "payloadSha256": "xcKx_dDUqDzaP_ecnHTyxy4qkpIK_aILyvyQwacvhqk"
+    },
+    {
+      "id": "whitespace",
+      "payloadJson": "{ \"z\" : 1,\t\"a\" : 2 }",
+      "payloadBytes": 20,
+      "payloadSha256": "WJBGUjACPHlNguXPOpVOjsv2tjzswUXX8Lw_LBxl6dA"
+    },
+    {
+      "id": "escaped_key",
+      "payloadJson": "{\"\\u0061\":\"\\u0078\"}",
+      "payloadBytes": 19,
+      "payloadSha256": "rENqZ3R2SLnxehNmKov9P8rtNHwIl1WQpbY5oj3WaGM"
+    },
+    {
+      "id": "unicode",
+      "payloadJson": "{\"value\":\"π雪🚀\"}",
+      "payloadBytes": 21,
+      "payloadSha256": "a6mUjRw4YAeLkALhUVf5CHZ_VBI9nzc3uYaWJ3pXlWU"
+    },
+    {
+      "id": "nested",
+      "payloadJson": "{\"value\":[{\"x\":\"}\\\"[\"},true,null,1e2]}",
+      "payloadBytes": 38,
+      "payloadSha256": "-chNy1qsk2XqdxJRkWzItm_hgH1mQx09S02drSX1zUo"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "profile": "bwg-worker-controller/0.4",
+  "request": {
+    "protocolVersion": "bwg-worker-controller/0.4",
+    "requestId": "serial_budget_review",
+    "command": "acceptance_budget_review",
+    "payload": {
+      "campaignId": "AAAAAAAAAAAAAAAAAAAAAA"
+    }
+  },
+  "result": {
+    "schema": "worker-budget-review-v1",
+    "campaign_match": true,
+    "reserved_mask": 1,
+    "completed_mask": 1,
+    "charged_ms": 180000,
+    "pending": false
+  },
+  "invalidPayloads": [
+    {},
+    {
+      "campaignId": null
+    },
+    {
+      "campaignId": "AAAAAAAAAAAAAAAAAAAAAB"
+    },
+    {
+      "campaignId": "AAAAAAAAAAAAAAAAAAAAAA="
+    },
+    {
+      "campaignId": "AAAAAAAAAAAAAAAAAAAAAA",
+      "extra": "synthetic"
+    }
+  ]
+}

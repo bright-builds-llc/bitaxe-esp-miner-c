@@ -122,6 +122,28 @@ This is `bright-builds-llc/bitaxe-esp-miner-c`: upstream's firmware plus the own
 - List every upstream file the fork touches below, with the reason, so a merge conflict lands only in this list:
   - `AGENTS.md`: this section and the managed Bright Builds Rules block.
   - `readme.md`: the managed Bright Builds Rules badge block.
+  - `components/asic/asic_submit.c`, `components/asic/CMakeLists.txt`: refuse work once authority is revoked (`docs/project/revocation-design.md`).
+  - `components/asic/frequency_transition_bmXX.c`: abandon an upward ramp once revoked, so a stop can begin within its limit.
+  - `components/asic/asic_job_slot.c`: tell a V2 share attempt which job slot its work took, so its record can name the dispatch.
+  - `components/asic/include/asic_common.h`: carry a result's job slot, so a V2 record can tie a nonce to its dispatch.
+  - `components/stratum_v2/sv2_noise.c`, `components/stratum_v2/include/sv2_noise.h`, `components/stratum_v2/test/test_sv2.c`, `components/stratum_v2/test/CMakeLists.txt`: check a certificate's validity window, and let a caller observe a connection and read why it failed, timing a frame from its first byte.
+  - `main/tasks/stratum_v2_client.c`: use a V2 lease's pool, refuse work once revoked, and report its frames and timings to the attempt's record.
+  - `main/tasks/stratum_task.c`: refuse shares and stay off the pool once revoked, and use a V2 lease's protocol.
+  - `main/CMakeLists.txt`: build the Gate's sources and wrap the panic and core-dump seams its fatal path uses.
+  - `main/tasks/stratum_v1_client.c`: use a lease's pool, and leave the pool once revoked.
+  - `main/tasks/power_management_task.c`: start and report the stop, end a lease on a local stop or overheat with its reading, tick the crash-loop guard, skip chip commands when a guard-paused boot never initialized it, record a lease's preparation, start the proof variant, and pace local restarts by the restart guard (`main/bwg/bwg_local_guard.c`), powering down after a failed start.
+  - `main/http_server/system_api_json.c`, `main/http_server/openapi.yaml`, `main/http_server/axe-os/src/app/services/system.service.ts`: report `miningActivity`, `pauseReason` and `mineOnBoot`.
+  - `main/tasks/fan_controller_task.c`: hold the fan the stop or the fan qualification asks for, report when it applied, and keep the Gate's readings fresh while the stop has the power task.
+  - `main/tasks/create_jobs_task.c`: forget earlier work once revoked.
+  - `main/tasks/asic_result_task.c`, `components/asic/asic_common.c`: count a lease's nonces and what the ASIC path observed, record a V2 attempt's nonces by job slot, and treat none of them as a block, since the fixture's target is easy.
+  - `main/http_server/websocket_api.c`, `main/http_server/websocket.c`, `main/http_server/websocket.h`: time the telemetry loop for the Gate's cadence qualification, and report whether a send succeeded.
+  - `main/http_server/http_server.c`: run the telemetry loop on the CPU and priority the Gate's cadence contract names.
+  - `main/main.c`: start the Gate and the crash-loop guard, leave the ASIC off on a boot the guard paused, keep an allocation failure's receipt, and name the board's pins for the panic cutoff.
+  - `partitions.csv`: a coredump partition that takes a whole dump, to the end of flash, matching the Rust image's table.
+  - `main/nvs_config.c`, `main/nvs_config.h`: the saved `mineOnBoot` choice the Gate reads, since upstream's pause ends with the boot.
+  - `main/power/asic_init.c`: reapply the difficulty after a reset, which is also sent upstream.
+  - `sdkconfig.defaults`: BLE off, the USB port free for the Gate's link, no BBPLL recalibration while it's in use, and core dumps to flash.
+  - `test/CMakeLists.txt`: run `bwg_worker` tests.
 
 ### Evidence Rules
 - Every claim names its board, commit and evidence, and lists its non-claims. All earlier evidence is about Rust images, so each claim here earns its own.

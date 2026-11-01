@@ -1,5 +1,9 @@
 #include "unity.h"
 #include "sv2_protocol.h"
+#include "sv2_noise.h"
+#include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include <string.h>
 
 TEST_CASE("SV2 parse open extended channel extranonce bounds", "[sv2]")
@@ -198,4 +202,195 @@ TEST_CASE("SV2 accepts direct and group channel broadcasts", "[sv2]")
     TEST_ASSERT_FALSE(sv2_channel_or_group_matches(12, 7, 11));
     TEST_ASSERT_TRUE(sv2_channel_or_group_matches(7, 7, 0));
     TEST_ASSERT_FALSE(sv2_channel_or_group_matches(0, 7, 0));
+}
+
+TEST_CASE("SV2 certificate holds only inside its window", "[sv2]")
+{
+    // Arrange
+    const uint32_t valid_from = 1800000000u;
+    const uint32_t not_valid_after = 1800003600u;
+
+    // Act / Assert
+    TEST_ASSERT_TRUE(sv2_noise_certificate_time_valid(valid_from, not_valid_after, valid_from + 1));
+    TEST_ASSERT_TRUE(sv2_noise_certificate_time_valid(valid_from, not_valid_after, valid_from - 10));
+    TEST_ASSERT_TRUE(sv2_noise_certificate_time_valid(valid_from, not_valid_after, not_valid_after + 10));
+    TEST_ASSERT_FALSE(sv2_noise_certificate_time_valid(valid_from, not_valid_after, valid_from - 11));
+    TEST_ASSERT_FALSE(sv2_noise_certificate_time_valid(valid_from, not_valid_after, not_valid_after + 11));
+}
+
+TEST_CASE("SV2 certificate can't hold before the clock is set", "[sv2]")
+{
+    // Act / Assert
+    TEST_ASSERT_FALSE(sv2_noise_certificate_time_valid(0, UINT32_MAX, 12345));
+}
+
+// A pool that stays quiet for a while, then delivers a frame.
+static struct {
+    int quiet_polls;
+    int polls;
+    int polls_at_read_begin;
+    bool stalled;
+    sv2_noise_ctx_t *send_during_read;
+    esp_transport_handle_t transport;
+    int stop_after_checks;
+    int checks;
+    int begins;
+    int ends;
+    sv2_noise_op_t begun[8];
+    sv2_noise_op_t ended[8];
+    bool last_end_failed;
+} s_pool;
+
+static int pool_poll_read(esp_transport_handle_t transport, int timeout_ms)
+{
+    return ++s_pool.polls > s_pool.quiet_polls ? 1 : 0;
+}
+
+static int pool_read(esp_transport_handle_t transport, char *buffer, int len, int timeout_ms)
+{
+    if (s_pool.stalled) {
+        vTaskDelay(pdMS_TO_TICKS(timeout_ms));
+        return ERR_TCP_TRANSPORT_CONNECTION_TIMEOUT;
+    }
+    if (s_pool.send_during_read != NULL) {
+        const uint8_t frame[6] = {0};
+        TEST_ASSERT_EQUAL(-1, sv2_noise_send(s_pool.send_during_read, s_pool.transport, frame, sizeof(frame)));
+    }
+    memset(buffer, 0, len);
+    return len;
+}
+
+static void pool_begin(sv2_noise_op_t op)
+{
+    if (op == SV2_NOISE_OP_FRAME_READ && s_pool.polls_at_read_begin < 0) {
+        s_pool.polls_at_read_begin = s_pool.polls;
+    }
+    s_pool.begun[s_pool.begins++] = op;
+}
+
+static void pool_end(sv2_noise_op_t op, bool failed)
+{
+    s_pool.last_end_failed = failed;
+    s_pool.ended[s_pool.ends++] = op;
+}
+
+static bool pool_keep_going(void)
+{
+    return s_pool.stop_after_checks == 0 || ++s_pool.checks < s_pool.stop_after_checks;
+}
+
+static bool pool_frame(const uint8_t header[6], const uint8_t *payload, int payload_len)
+{
+    return true;
+}
+
+static const sv2_noise_observer_t POOL_OBSERVER = {
+    .begin = pool_begin,
+    .end = pool_end,
+    .keep_going = pool_keep_going,
+    .frame = pool_frame,
+};
+
+static sv2_noise_ctx_t *pool_session(esp_transport_handle_t *transport)
+{
+    memset(&s_pool, 0, sizeof(s_pool));
+    s_pool.polls_at_read_begin = -1;
+    *transport = esp_transport_init();
+    TEST_ASSERT_NOT_NULL(*transport);
+    esp_transport_set_func(*transport, NULL, pool_read, NULL, NULL, pool_poll_read, NULL, NULL);
+    sv2_noise_ctx_t *ctx = sv2_noise_create();
+    TEST_ASSERT_NOT_NULL(ctx);
+    sv2_noise_test_skip_handshake(ctx);
+    sv2_noise_set_observer(ctx, &POOL_OBSERVER);
+    return ctx;
+}
+
+static int pool_receive(sv2_noise_ctx_t *ctx, esp_transport_handle_t transport)
+{
+    uint8_t header[6];
+    uint8_t payload[16];
+    int payload_len = 0;
+    return sv2_noise_recv(ctx, transport, header, payload, sizeof(payload), &payload_len);
+}
+
+TEST_CASE("SV2 observed frame read begins at the first byte", "[sv2]")
+{
+    // Arrange
+    esp_transport_handle_t transport;
+    sv2_noise_ctx_t *ctx = pool_session(&transport);
+    s_pool.quiet_polls = 3;
+
+    // Act
+    pool_receive(ctx, transport);
+
+    // Assert
+    TEST_ASSERT_EQUAL(4, s_pool.polls_at_read_begin);
+    TEST_ASSERT_EQUAL(SV2_NOISE_OP_FRAME_READ, s_pool.begun[0]);
+
+    sv2_noise_destroy(ctx);
+    esp_transport_destroy(transport);
+}
+
+TEST_CASE("SV2 observed idle wait that stops opens no read", "[sv2]")
+{
+    // Arrange
+    esp_transport_handle_t transport;
+    sv2_noise_ctx_t *ctx = pool_session(&transport);
+    s_pool.quiet_polls = 1000;
+    s_pool.stop_after_checks = 3;
+
+    // Act
+    const int result = pool_receive(ctx, transport);
+
+    // Assert
+    TEST_ASSERT_EQUAL(-1, result);
+    TEST_ASSERT_EQUAL(0, s_pool.begins);
+    TEST_ASSERT_EQUAL(SV2_NOISE_FAILURE_TIMEOUT, sv2_noise_last_failure(ctx));
+
+    sv2_noise_destroy(ctx);
+    esp_transport_destroy(transport);
+}
+
+TEST_CASE("SV2 observed frame read gives up at its deadline", "[sv2]")
+{
+    // Arrange
+    esp_transport_handle_t transport;
+    sv2_noise_ctx_t *ctx = pool_session(&transport);
+    s_pool.stalled = true;
+    const int64_t started_us = esp_timer_get_time();
+
+    // Act
+    const int result = pool_receive(ctx, transport);
+    const int64_t elapsed_us = esp_timer_get_time() - started_us;
+
+    // Assert
+    TEST_ASSERT_EQUAL(-1, result);
+    TEST_ASSERT_TRUE(s_pool.last_end_failed);
+    TEST_ASSERT_EQUAL(SV2_NOISE_OP_FRAME_READ, s_pool.ended[0]);
+    TEST_ASSERT_EQUAL(SV2_NOISE_FAILURE_TIMEOUT, sv2_noise_last_failure(ctx));
+    TEST_ASSERT_TRUE(elapsed_us >= 10000000 && elapsed_us < 11000000);
+
+    sv2_noise_destroy(ctx);
+    esp_transport_destroy(transport);
+}
+
+TEST_CASE("SV2 observed send leaves a read in progress open", "[sv2]")
+{
+    // Arrange
+    esp_transport_handle_t transport;
+    sv2_noise_ctx_t *ctx = pool_session(&transport);
+    s_pool.send_during_read = ctx;
+    s_pool.transport = transport;
+
+    // Act
+    pool_receive(ctx, transport);
+
+    // Assert
+    TEST_ASSERT_EQUAL(SV2_NOISE_OP_FRAME_READ, s_pool.begun[0]);
+    TEST_ASSERT_EQUAL(SV2_NOISE_OP_FRAME_ENCRYPT, s_pool.begun[1]);
+    TEST_ASSERT_EQUAL(SV2_NOISE_OP_FRAME_ENCRYPT, s_pool.ended[0]);
+    TEST_ASSERT_EQUAL(SV2_NOISE_OP_FRAME_READ, s_pool.ended[1]);
+
+    sv2_noise_destroy(ctx);
+    esp_transport_destroy(transport);
 }

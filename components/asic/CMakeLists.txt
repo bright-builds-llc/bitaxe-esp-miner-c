@@ -24,6 +24,7 @@ PRIV_INCLUDE_DIRS
     "private_include"
 
 REQUIRES 
+    "bwg_worker"
     "mining_job"
     "freertos"
     "esp_driver_uart"

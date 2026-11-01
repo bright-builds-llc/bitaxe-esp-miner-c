@@ -4,6 +4,7 @@
 #include "freertos/task.h"
 #include <math.h>
 #include "global_state.h"
+#include "bwg_revocation.h"
 
 #define EPSILON 0.0001f
 #define STEP_SIZE 6.25 // MHz step size
@@ -35,6 +36,12 @@ void do_frequency_transition(GlobalState * GLOBAL_STATE, set_hash_frequency_fn s
         
         while ((signum > 0 && current_step < target_step) ||
                (signum < 0 && current_step > target_step)) {
+            // Authority closed during a start: the stop ramps down from here.
+            if (signum > 0 && bwg_revocation_stop_wanted()) {
+                ESP_LOGW(TAG, "Ramp abandoned at %g MHz", current_frequency);
+                return;
+            }
+
             current_step += signum;
 
             current_frequency = current_step * STEP_SIZE;

@@ -27,6 +27,10 @@ uint8_t asic_initialize(GlobalState *GLOBAL_STATE, asic_init_mode_t mode, uint32
                                      : 1;
     ESP_LOGI(TAG, "Starting ASIC initialization (%s mode)", mode_str);
 
+    // A reset returns the chip to its default ticket mask, so the last applied
+    // difficulty no longer holds and the update below has to write it again.
+    GLOBAL_STATE->current_difficulty_power = 0;
+
     if (asic_reset(INIT_RESET_LOW_MS, INIT_RESET_RELEASE_MS) != ESP_OK) {
         GLOBAL_STATE->SYSTEM_MODULE.asic_status = "ASIC reset failed";
         ESP_LOGE(TAG, "ASIC reset failed!");

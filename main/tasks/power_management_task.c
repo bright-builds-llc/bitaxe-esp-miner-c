@@ -1,3 +1,5 @@
+#include <math.h>
+
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -12,6 +14,13 @@
 #include "asic_reset.h"
 #include "difficulty_controller.h"
 #include "driver/uart.h"
+#include "bwg_boot_guard.h"
+#include "bwg_local_guard.h"
+#include "bwg_revocation.h"
+#include "stratum_task.h"
+#include "bwg_mining.h"
+#include "bwg_preparation.h"
+#include "bwg_stop.h"
 
 #define POLL_RATE 100
 #define MAX_TEMP 90.0
@@ -26,6 +35,7 @@
 #define TPS546_MAX_TEMP 145.0
 
 #define ASIC_REDUCTION 100.0
+#define START_STABILIZATION_MS 2000
 
 static const char * TAG = "power_management";
 
@@ -39,8 +49,11 @@ static void mining_stop(GlobalState * GLOBAL_STATE)
     GLOBAL_STATE->POWER_MANAGEMENT_MODULE.frequency_value = 50;
     GLOBAL_STATE->POWER_MANAGEMENT_MODULE.expected_hashrate = 0;
 
-    ASIC_set_frequency(GLOBAL_STATE);
-    ASIC_set_nonce_space(GLOBAL_STATE);
+    // A boot the crash-loop guard paused never initialized the chip.
+    if (GLOBAL_STATE->ASIC_initalized) {
+        ASIC_set_frequency(GLOBAL_STATE);
+        ASIC_set_nonce_space(GLOBAL_STATE);
+    }
 
     // Cut ASIC power and hold in reset
     VCORE_set_voltage(GLOBAL_STATE, 0.0f);
@@ -65,19 +78,41 @@ static uint8_t mining_start(GlobalState * GLOBAL_STATE)
 
     // Restore voltage from NVS
     uint16_t voltage = nvs_config_get_u16(NVS_CONFIG_ASIC_VOLTAGE);
-    VCORE_set_voltage(GLOBAL_STATE, (double) voltage / 1000.0);
+    bwg_preparation_started(BWG_PREP_STEP_CORE_VOLTAGE);
+    if (VCORE_set_voltage(GLOBAL_STATE, (double) voltage / 1000.0) == ESP_OK) {
+        bwg_preparation_completed(BWG_PREP_STEP_CORE_VOLTAGE);
+    } else {
+        bwg_preparation_failed(BWG_PREP_STEP_CORE_VOLTAGE, BWG_PREP_FAILURE_HARDWARE_WRITE_FAILED);
+    }
 
     // Wait for voltage to stabilize before touching the ASIC
+    bwg_preparation_started(BWG_PREP_STEP_VOLTAGE_SETTLE);
     vTaskDelay(500 / portTICK_PERIOD_MS);
 
     // Clear any accumulated UART garbage before init
     uart_flush(UART_NUM_1);
     vTaskDelay(100 / portTICK_PERIOD_MS);
 
+    // Authority closed during the start: the stop has to begin within its limit, not after the start.
+    if (bwg_revocation_stop_wanted()) {
+        bwg_preparation_failed(BWG_PREP_STEP_VOLTAGE_SETTLE, BWG_PREP_FAILURE_CANCELLED);
+        return 0;
+    }
+    bwg_preparation_completed(BWG_PREP_STEP_VOLTAGE_SETTLE);
+
     POWER_MANAGEMENT_init_frequency(GLOBAL_STATE);
-    // Stabilization delay of 2000ms prevents race conditions where tasks are
+    bwg_preparation_started(BWG_PREP_STEP_ASIC_INIT);
+    uint8_t chip_count = asic_initialize(GLOBAL_STATE, ASIC_INIT_RECOVERY, 0);
+    if (chip_count > 0) {
+        bwg_preparation_completed(BWG_PREP_STEP_ASIC_INIT);
+    } else {
+        bwg_preparation_failed(BWG_PREP_STEP_ASIC_INIT, BWG_PREP_FAILURE_ASIC_FAILED);
+    }
+    // Stabilization delay prevents race conditions where tasks are
     // just starting to use the ASIC while power management tries to change frequency
-    uint8_t chip_count = asic_initialize(GLOBAL_STATE, ASIC_INIT_RECOVERY, 2000);
+    for (int waited_ms = 0; waited_ms < START_STABILIZATION_MS && !bwg_revocation_stop_wanted(); waited_ms += POLL_RATE) {
+        vTaskDelay(POLL_RATE / portTICK_PERIOD_MS);
+    }
 
     if (chip_count > 0) {
         ESP_LOGI(TAG, "Mining started successfully (%d chip(s))", chip_count);
@@ -110,6 +145,10 @@ void POWER_MANAGEMENT_task(void * pvParameters)
 {
     ESP_LOGI(TAG, "Starting");
 
+#ifdef CONFIG_BWG_REVOCATION_PROOF
+    bwg_revocation_proof_start();
+#endif
+
     GlobalState * GLOBAL_STATE = (GlobalState *) pvParameters;
 
     PowerManagementModule * power_management = &GLOBAL_STATE->POWER_MANAGEMENT_MODULE;
@@ -141,14 +180,36 @@ void POWER_MANAGEMENT_task(void * pvParameters)
         power_management->chip_temp2_avg = Thermal_get_chip_temp2(GLOBAL_STATE);
 
         power_management->vr_temp = Power_get_vreg_temp(GLOBAL_STATE);
+        bwg_mining_check_limits(GLOBAL_STATE);
+        bwg_boot_guard_tick(GLOBAL_STATE);
+        bwg_local_guard_tick(GLOBAL_STATE, is_paused);
+
         // User pause, hardware fault, or all pools unreachable
-        bool wants_stop = sys_module->mining_paused || sys_module->hardware_fault || sys_module->pools_unavailable;
+        bool wants_local_stop = sys_module->mining_paused || sys_module->hardware_fault || sys_module->pools_unavailable;
+        if (wants_local_stop) {
+            bwg_revocation_revoke_lease(BWG_STOP_REASON_LOCAL_STOP);
+        }
+        bool revoked = bwg_revocation_stop_wanted();
+        bool wants_stop = wants_local_stop || revoked;
         if (wants_stop && !is_paused) {
-            mining_stop(GLOBAL_STATE);
+            if (revoked) {
+                bwg_revocation_note_stop_started();
+                bwg_stop_ordered(GLOBAL_STATE);
+            } else {
+                mining_stop(GLOBAL_STATE);
+            }
             is_paused = true;
-        } else if (!wants_stop && is_paused) {
-            mining_start(GLOBAL_STATE);
-            is_paused = false;
+        } else if (!wants_stop && is_paused && !bwg_local_guard_backing_off()) {
+            bwg_stop_reset();
+            if (mining_start(GLOBAL_STATE) == 0 && bwg_local_guard_note_failed_start(GLOBAL_STATE)) {
+                // The guard paces the next try, with the chip's power off until then.
+                mining_stop(GLOBAL_STATE);
+            } else {
+                is_paused = false;
+            }
+        }
+        if (revoked && is_paused) {
+            bwg_revocation_note_stopped();
         }
 
         // If we've paused or have a hardware fault, skip doing anything else
@@ -157,11 +218,20 @@ void POWER_MANAGEMENT_task(void * pvParameters)
             continue;
         }
 
+
         bool asic_overheat =
             power_management->chip_temp_avg > THROTTLE_TEMP
             || power_management->chip_temp2_avg > THROTTLE_TEMP;
 
         if ((power_management->vr_temp > TPS546_THROTTLE_TEMP || asic_overheat) && (power_management->frequency_value > 50 || power_management->voltage > 1000)) {
+            // A lease ends with the ordered stop, and upstream's safe mode doesn't apply to it.
+            if (bwg_revocation_snapshot().state == BWG_AUTHORITY_LEASED) {
+                bwg_mining_end_lease_on_overheat(
+                    asic_overheat, asic_overheat ? fmaxf(power_management->chip_temp_avg, power_management->chip_temp2_avg)
+                                                 : power_management->vr_temp);
+                continue;
+            }
+
             if (power_management->chip_temp2_avg > 0) {
                 ESP_LOGE(TAG, "OVERHEAT! VR: %fC ASIC1: %fC ASIC2: %fC", power_management->vr_temp, power_management->chip_temp_avg, power_management->chip_temp2_avg);
             } else {
@@ -225,6 +295,14 @@ void POWER_MANAGEMENT_task(void * pvParameters)
             
             ESP_LOGI(TAG, "Restoring at reduced settings: %umV (was %umV), %.0f MHz (was %.0f MHz)",
                      reduced_voltage, last_known_asic_voltage, reduced_asic_frequency, last_known_asic_frequency);
+
+            if (bwg_revocation_stop_wanted()) {
+                // Revoked while cooling: the ASIC is already down, so it stays down, and off the pool.
+                stratum_request_reconnect();
+                nvs_config_set_bool(NVS_CONFIG_OVERHEAT_MODE, false);
+                is_paused = true;
+                continue;
+            }
 
             uint8_t chip_count = mining_start(GLOBAL_STATE);
 

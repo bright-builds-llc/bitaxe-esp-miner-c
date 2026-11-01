@@ -10,6 +10,7 @@
 #include "system_api_json.h"
 #include "yyjson.h"
 #include "yyjson_utils.h"
+#include "bwg_telemetry_cadence.h"
 
 #define WEBSOCKET_API_RATE_LIMIT_MS 500
 
@@ -27,10 +28,14 @@ static yyjson_mut_doc *process_and_send_update(yyjson_mut_doc *last_state, int f
 {
     const yyjson_alc *alc = yyjson_psram_alc();
     yyjson_mut_doc *current_full = system_api_get_full_doc(GLOBAL_STATE, alc);
-    if (!current_full) return last_state;
+    if (!current_full) {
+        bwg_telemetry_note_publication(BWG_CADENCE_PROJECTION_FAILED);
+        return last_state;
+    }
 
     yyjson_mut_doc *msg_doc = yyjson_mut_doc_new(alc);
     if (!msg_doc) {
+        bwg_telemetry_note_publication(BWG_CADENCE_PROJECTION_FAILED);
         return current_full;
     }
 
@@ -39,6 +44,7 @@ static yyjson_mut_doc *process_and_send_update(yyjson_mut_doc *last_state, int f
     yyjson_mut_val *diff = yyjson_diff_objects(msg_doc, old_root, new_root);
 
     if (diff == NULL) {
+        bwg_telemetry_note_publication(BWG_CADENCE_UNCHANGED);
         yyjson_mut_doc_free(msg_doc);
         if (last_state) {
             yyjson_mut_doc_free(current_full);
@@ -55,6 +61,7 @@ static yyjson_mut_doc *process_and_send_update(yyjson_mut_doc *last_state, int f
 
         size_t len = 0;
         char *json_str = yyjson_mut_write_opts(msg_doc, YYJSON_WRITE_INF_AND_NAN_AS_NULL | YYJSON_WRITE_ALLOW_INVALID_UNICODE, alc, &len, NULL);
+        bwg_telemetry_note_publication(json_str != NULL ? BWG_CADENCE_PROJECTED : BWG_CADENCE_SERIALIZATION_FAILED);
         if (json_str != NULL) {
             httpd_ws_frame_t ws_pkt;
             memset(&ws_pkt, 0, sizeof(httpd_ws_frame_t));
@@ -105,6 +112,7 @@ void websocket_api_task(void *pvParameters)
 
     while (true) {
         vTaskDelay(pdMS_TO_TICKS(WEBSOCKET_API_RATE_LIMIT_MS));
+        const int64_t iteration_started_us = bwg_telemetry_iteration_begin();
 
         // If no clients are connected, hibernate to save CPU/Memory churn
         if (websocket_get_active_client_count(WS_TYPE_API) == 0) {
@@ -112,6 +120,8 @@ void websocket_api_task(void *pvParameters)
                 yyjson_mut_doc_free(last_full_doc);
                 last_full_doc = NULL;
             }
+            bwg_telemetry_note_publication(BWG_CADENCE_NO_SUBSCRIBERS);
+            bwg_telemetry_iteration_end(iteration_started_us);
             continue;
         }
 
@@ -129,5 +139,6 @@ void websocket_api_task(void *pvParameters)
             }
             last_full_doc = new_full_doc;
         }
+        bwg_telemetry_iteration_end(iteration_started_us);
     }
 }

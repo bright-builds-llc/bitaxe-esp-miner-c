@@ -1896,7 +1896,7 @@ esp_err_t start_rest_server(GlobalState * GLOBAL_STATE)
     websocket_set_log_task_handle(ws_log_task_handle);
 
     // Start websocket API live data handler thread
-    if (xTaskCreateWithCaps(websocket_api_task, "ws_api_task", 8192, GLOBAL_STATE, 2, NULL, MALLOC_CAP_SPIRAM) != pdPASS) {
+    if (xTaskCreatePinnedToCoreWithCaps(websocket_api_task, "ws_api_task", 8192, GLOBAL_STATE, 5, NULL, 0, MALLOC_CAP_SPIRAM) != pdPASS) {
         ESP_LOGE(TAG, "Error creating ws api task");
     }
 

@@ -1,3 +1,4 @@
+#include "bwg_progress.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -159,22 +160,26 @@ int count_asic_chips(uint16_t asic_count, uint16_t chip_id, int chip_id_response
 
 esp_err_t receive_work(uint8_t * buffer, int buffer_size, uint64_t *out_timestamp_us)
 {
+    bwg_progress_note(BWG_PROGRESS_POLL_REQUESTED);
     int received = SERIAL_rx(buffer, buffer_size, 10000);
     if (out_timestamp_us) {
         *out_timestamp_us = esp_timer_get_time();
     }
 
     if (received < 0) {
+        bwg_progress_note(BWG_PROGRESS_DISCARD_PARSER_INVARIANT);
         ESP_LOGE(TAG, "UART error in serial RX");
         return ESP_FAIL;
     }
 
     if (received == 0) {
+        bwg_progress_note(BWG_PROGRESS_POLL_IDLE);
         ESP_LOGD(TAG, "UART timeout in serial RX");
         return ESP_FAIL;
     }
 
     if (received != buffer_size) {
+        bwg_progress_note(BWG_PROGRESS_DISCARD_INVALID_LENGTH);
         ESP_LOGE(TAG, "Invalid response length %i", received);
         ESP_LOG_BUFFER_HEX(TAG, buffer, received);
         SERIAL_clear_buffer();
@@ -183,6 +188,7 @@ esp_err_t receive_work(uint8_t * buffer, int buffer_size, uint64_t *out_timestam
 
     uint16_t received_preamble = (buffer[0] << 8) | buffer[1];
     if (received_preamble != PREAMBLE) {
+        bwg_progress_note(BWG_PROGRESS_DISCARD_INVALID_PREAMBLE);
         ESP_LOGE(TAG, "Preamble mismatch: got 0x%04x, expected 0x%04x", received_preamble, PREAMBLE);
         ESP_LOG_BUFFER_HEX(TAG, buffer, received);
         SERIAL_clear_buffer();
@@ -190,6 +196,7 @@ esp_err_t receive_work(uint8_t * buffer, int buffer_size, uint64_t *out_timestam
     }
 
     if (crc5(buffer + 2, buffer_size - 2) != 0) {
+        bwg_progress_note(BWG_PROGRESS_DISCARD_INVALID_CRC);
         ESP_LOGE(TAG, "Checksum failed on response");        
         ESP_LOG_BUFFER_HEX(TAG, buffer, received);
         SERIAL_clear_buffer();
@@ -287,8 +294,10 @@ bool bm13xx_decode_job_result(asic_job_store_t *store,
     uint8_t small_core_id = bm_decode_wire_sub_id(wire_chip_slot, small_core_bits);
 
     if (!asic_job_store_lookup(store, slot, &result->job)) {
+        bwg_progress_note(BWG_PROGRESS_DISCARD_JOB_LOOKUP);
         return false;
     }
+    result->job_slot = slot;
 
     uint32_t nonce_h = ntohl(wire_nonce);
     uint8_t asic_nr = (uint8_t)(((nonce_h >> 17) & 0xff) / address_interval);
@@ -318,8 +327,10 @@ bool bm1397_decode_job_result(asic_job_store_t *store,
     uint8_t rx_midstate_index = bm_decode_wire_sub_id(wire_chip_slot, BM1397_MIDSTATE_BITS);
 
     if (!asic_job_store_lookup(store, slot, &result->job)) {
+        bwg_progress_note(BWG_PROGRESS_DISCARD_JOB_LOOKUP);
         return false;
     }
+    result->job_slot = slot;
 
     uint32_t rolled_version = result->job.version;
     for (int i = 0; i < rx_midstate_index; i++) {

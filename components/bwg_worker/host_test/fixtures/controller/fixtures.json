@@ -1,0 +1,490 @@
+{
+  "profile": "bwg-worker-controller/0.4",
+  "capabilities": {
+    "protocolVersion": "bwg-worker-controller/0.4",
+    "board": {
+      "model": "bitaxe-ultra",
+      "revision": "205",
+      "usbTransport": "web_serial"
+    },
+    "firmware": {
+      "name": "bright-builds-reference-firmware",
+      "version": "0.1.0"
+    },
+    "compatibility": {
+      "referenceFirmware": true,
+      "workLease": "supported",
+      "miningBaselineRestoration": "supported",
+      "settingsPreservation": "compatible"
+    },
+    "transportProfile": "bwg-worker-serial/0.2",
+    "attestation": {
+      "claims": {
+        "profile": "bwg-reference-firmware-capability/0.2",
+        "protocolVersion": "bwg-worker-controller/0.4",
+        "board": {
+          "model": "bitaxe-ultra",
+          "revision": "205"
+        },
+        "firmware": {
+          "name": "bright-builds-reference-firmware",
+          "version": "0.1.0"
+        },
+        "compatibility": {
+          "referenceFirmware": true,
+          "workLease": "supported",
+          "miningBaselineRestoration": "supported",
+          "settingsPreservation": "compatible"
+        },
+        "transportProfile": "bwg-worker-serial/0.2",
+        "serialManifestSha256": "pDwsfWH5X8bHMTqyB0SgAxTKA0_KpzBqdSLxMpKVNhU"
+      },
+      "compactJws": "eyJhbGciOiJFZDI1NTE5Iiwia2lkIjoiZml4dHVyZS1zZXJpYWwtdXBkYXRlIiwidHlwIjoiYndnLXdvcmtlci1jYXBhYmlsaXR5K2p3cyJ9.eyJib2FyZCI6eyJtb2RlbCI6ImJpdGF4ZS11bHRyYSIsInJldmlzaW9uIjoiMjA1In0sImNvbXBhdGliaWxpdHkiOnsibWluaW5nQmFzZWxpbmVSZXN0b3JhdGlvbiI6InN1cHBvcnRlZCIsInJlZmVyZW5jZUZpcm13YXJlIjp0cnVlLCJzZXR0aW5nc1ByZXNlcnZhdGlvbiI6ImNvbXBhdGlibGUiLCJ3b3JrTGVhc2UiOiJzdXBwb3J0ZWQifSwiZmlybXdhcmUiOnsibmFtZSI6ImJyaWdodC1idWlsZHMtcmVmZXJlbmNlLWZpcm13YXJlIiwidmVyc2lvbiI6IjAuMS4wIn0sInByb2ZpbGUiOiJid2ctcmVmZXJlbmNlLWZpcm13YXJlLWNhcGFiaWxpdHkvMC4yIiwicHJvdG9jb2xWZXJzaW9uIjoiYndnLXdvcmtlci1jb250cm9sbGVyLzAuNCIsInNlcmlhbE1hbmlmZXN0U2hhMjU2IjoicER3c2ZXSDVYOGJITVRxeUIwU2dBeFRLQTBfS3B6QnFkU0x4TXBLVk5oVSIsInRyYW5zcG9ydFByb2ZpbGUiOiJid2ctd29ya2VyLXNlcmlhbC8wLjIifQ.ZGsud2_78H4mT0wmBsy_dvfJrX7ipffTCGdBvCnoo7Bn64Izw85WTehbpYN6R3Yy_m-INj3s8NbawQkY0qrpDg"
+    }
+  },
+  "lease": {
+    "protocolVersion": "bwg-worker-controller/0.4",
+    "leaseId": "lease_fixture_01",
+    "challengeId": "challenge_00000000000000000000000000000001",
+    "authorization": "fixture-authentication-not-a-production-secret",
+    "durationMilliseconds": 60000,
+    "renewAfterMilliseconds": 20000,
+    "stratum": {
+      "endpoint": "stratum+tcp://127.0.0.1:3333/",
+      "username": "fixture-session-user",
+      "password": "fixture-session-password"
+    }
+  },
+  "renewal": {
+    "protocolVersion": "bwg-worker-controller/0.4",
+    "leaseId": "lease_fixture_01",
+    "authorization": "fixture-renewal-authentication",
+    "durationMilliseconds": 60000,
+    "renewAfterMilliseconds": 20000
+  },
+  "inputs": {
+    "lease": {
+      "base": "lease",
+      "overrides": {}
+    },
+    "fresh_lease": {
+      "base": "lease",
+      "overrides": {
+        "leaseId": "lease_fixture_02"
+      }
+    },
+    "oversized_lease": {
+      "base": "lease",
+      "overrides": {
+        "durationMilliseconds": 60001
+      }
+    },
+    "invalid_authorization": {
+      "base": "lease",
+      "overrides": {
+        "authorization": "invalid"
+      }
+    },
+    "renewal": {
+      "base": "renewal",
+      "overrides": {}
+    },
+    "wrong_lease_renewal": {
+      "base": "renewal",
+      "overrides": {
+        "leaseId": "lease_other_01"
+      }
+    }
+  },
+  "scenarios": [
+    {
+      "id": "discover",
+      "steps": [
+        {
+          "operation": "discover"
+        }
+      ],
+      "expected": {
+        "capabilities": true
+      }
+    },
+    {
+      "id": "start",
+      "steps": [
+        {
+          "operation": "start",
+          "input": "lease"
+        }
+      ],
+      "expected": {
+        "state": "mining"
+      }
+    },
+    {
+      "id": "renew",
+      "steps": [
+        {
+          "operation": "start",
+          "input": "lease"
+        },
+        {
+          "operation": "advance_monotonic",
+          "value": 19999
+        },
+        {
+          "operation": "renew",
+          "input": "renewal"
+        }
+      ],
+      "expected": {
+        "state": "mining"
+      }
+    },
+    {
+      "id": "status_after_renew_hint",
+      "steps": [
+        {
+          "operation": "start",
+          "input": "lease"
+        },
+        {
+          "operation": "advance_monotonic",
+          "value": 20000
+        },
+        {
+          "operation": "status"
+        }
+      ],
+      "expected": {
+        "state": "mining"
+      }
+    },
+    {
+      "id": "pause_restore",
+      "steps": [
+        {
+          "operation": "start",
+          "input": "lease"
+        },
+        {
+          "operation": "pause"
+        }
+      ],
+      "expected": {
+        "state": "baseline",
+        "reason": "paused"
+      }
+    },
+    {
+      "id": "cancel_restore",
+      "steps": [
+        {
+          "operation": "start",
+          "input": "lease"
+        },
+        {
+          "operation": "cancel"
+        }
+      ],
+      "expected": {
+        "state": "baseline",
+        "reason": "cancelled"
+      }
+    },
+    {
+      "id": "expiry_restore",
+      "steps": [
+        {
+          "operation": "start",
+          "input": "lease"
+        },
+        {
+          "operation": "advance_monotonic",
+          "value": 60000
+        }
+      ],
+      "expected": {
+        "state": "baseline",
+        "reason": "lease_expired"
+      }
+    },
+    {
+      "id": "lost_continuity_restore",
+      "steps": [
+        {
+          "operation": "start",
+          "input": "lease"
+        },
+        {
+          "operation": "lose_continuity",
+          "value": "boot_fixture_lost"
+        }
+      ],
+      "expected": {
+        "state": "baseline",
+        "reason": "lost_continuity"
+      }
+    },
+    {
+      "id": "monotonic_reset_restore",
+      "steps": [
+        {
+          "operation": "start",
+          "input": "lease"
+        },
+        {
+          "operation": "advance_monotonic",
+          "value": 1000
+        },
+        {
+          "operation": "reset_monotonic",
+          "value": 5000
+        }
+      ],
+      "expected": {
+        "state": "baseline",
+        "reason": "monotonic_reset"
+      }
+    },
+    {
+      "id": "reboot_restore",
+      "steps": [
+        {
+          "operation": "start",
+          "input": "lease"
+        },
+        {
+          "operation": "reboot",
+          "value": "boot_fixture_rebooted"
+        }
+      ],
+      "expected": {
+        "state": "baseline",
+        "reason": "reboot"
+      }
+    },
+    {
+      "id": "fresh_lease_after_reboot",
+      "steps": [
+        {
+          "operation": "start",
+          "input": "lease"
+        },
+        {
+          "operation": "reboot",
+          "value": "boot_fixture_fresh"
+        },
+        {
+          "operation": "start",
+          "input": "fresh_lease"
+        }
+      ],
+      "expected": {
+        "state": "mining"
+      }
+    },
+    {
+      "id": "reject_oversized_lease",
+      "steps": [
+        {
+          "operation": "start",
+          "input": "oversized_lease"
+        }
+      ],
+      "expected": {
+        "error": "lease duration is outside the contract"
+      }
+    },
+    {
+      "id": "reject_invalid_authorization",
+      "steps": [
+        {
+          "operation": "start",
+          "input": "invalid_authorization"
+        }
+      ],
+      "expected": {
+        "error": "Work Lease authentication failed"
+      }
+    },
+    {
+      "id": "reject_stale_renewal",
+      "steps": [
+        {
+          "operation": "start",
+          "input": "lease"
+        },
+        {
+          "operation": "advance_monotonic",
+          "value": 60000
+        },
+        {
+          "operation": "renew",
+          "input": "renewal"
+        }
+      ],
+      "expected": {
+        "error": "Work Lease is not active"
+      }
+    },
+    {
+      "id": "reject_wrong_lease_renewal",
+      "steps": [
+        {
+          "operation": "start",
+          "input": "lease"
+        },
+        {
+          "operation": "renew",
+          "input": "wrong_lease_renewal"
+        }
+      ],
+      "expected": {
+        "error": "Work Lease authentication failed"
+      }
+    },
+    {
+      "id": "redacted_diagnostics",
+      "steps": [
+        {
+          "operation": "start",
+          "input": "lease"
+        },
+        {
+          "operation": "status"
+        }
+      ],
+      "expected": {
+        "state": "mining",
+        "redacted": true
+      }
+    }
+  ],
+  "usbVectors": [
+    {
+      "id": "serial_discover",
+      "request": {
+        "protocolVersion": "bwg-worker-controller/0.4",
+        "requestId": "serial_vector_discover",
+        "command": "discover"
+      },
+      "response": {
+        "protocolVersion": "bwg-worker-controller/0.4",
+        "requestId": "serial_vector_discover",
+        "ok": true,
+        "result": {
+          "protocolVersion": "bwg-worker-controller/0.4",
+          "board": {
+            "model": "bitaxe-ultra",
+            "revision": "205",
+            "usbTransport": "web_serial"
+          },
+          "firmware": {
+            "name": "bright-builds-reference-firmware",
+            "version": "0.1.0"
+          },
+          "compatibility": {
+            "referenceFirmware": true,
+            "workLease": "supported",
+            "miningBaselineRestoration": "supported",
+            "settingsPreservation": "compatible"
+          },
+          "transportProfile": "bwg-worker-serial/0.2",
+          "attestation": {
+            "claims": {
+              "profile": "bwg-reference-firmware-capability/0.2",
+              "protocolVersion": "bwg-worker-controller/0.4",
+              "board": {
+                "model": "bitaxe-ultra",
+                "revision": "205"
+              },
+              "firmware": {
+                "name": "bright-builds-reference-firmware",
+                "version": "0.1.0"
+              },
+              "compatibility": {
+                "referenceFirmware": true,
+                "workLease": "supported",
+                "miningBaselineRestoration": "supported",
+                "settingsPreservation": "compatible"
+              },
+              "transportProfile": "bwg-worker-serial/0.2",
+              "serialManifestSha256": "pDwsfWH5X8bHMTqyB0SgAxTKA0_KpzBqdSLxMpKVNhU"
+            },
+            "compactJws": "eyJhbGciOiJFZDI1NTE5Iiwia2lkIjoiZml4dHVyZS1zZXJpYWwtdXBkYXRlIiwidHlwIjoiYndnLXdvcmtlci1jYXBhYmlsaXR5K2p3cyJ9.eyJib2FyZCI6eyJtb2RlbCI6ImJpdGF4ZS11bHRyYSIsInJldmlzaW9uIjoiMjA1In0sImNvbXBhdGliaWxpdHkiOnsibWluaW5nQmFzZWxpbmVSZXN0b3JhdGlvbiI6InN1cHBvcnRlZCIsInJlZmVyZW5jZUZpcm13YXJlIjp0cnVlLCJzZXR0aW5nc1ByZXNlcnZhdGlvbiI6ImNvbXBhdGlibGUiLCJ3b3JrTGVhc2UiOiJzdXBwb3J0ZWQifSwiZmlybXdhcmUiOnsibmFtZSI6ImJyaWdodC1idWlsZHMtcmVmZXJlbmNlLWZpcm13YXJlIiwidmVyc2lvbiI6IjAuMS4wIn0sInByb2ZpbGUiOiJid2ctcmVmZXJlbmNlLWZpcm13YXJlLWNhcGFiaWxpdHkvMC4yIiwicHJvdG9jb2xWZXJzaW9uIjoiYndnLXdvcmtlci1jb250cm9sbGVyLzAuNCIsInNlcmlhbE1hbmlmZXN0U2hhMjU2IjoicER3c2ZXSDVYOGJITVRxeUIwU2dBeFRLQTBfS3B6QnFkU0x4TXBLVk5oVSIsInRyYW5zcG9ydFByb2ZpbGUiOiJid2ctd29ya2VyLXNlcmlhbC8wLjIifQ.ZGsud2_78H4mT0wmBsy_dvfJrX7ipffTCGdBvCnoo7Bn64Izw85WTehbpYN6R3Yy_m-INj3s8NbawQkY0qrpDg"
+          }
+        }
+      }
+    },
+    {
+      "id": "serial_start",
+      "request": {
+        "protocolVersion": "bwg-worker-controller/0.4",
+        "requestId": "serial_vector_start",
+        "command": "start_lease",
+        "payload": {
+          "protocolVersion": "bwg-worker-controller/0.4",
+          "leaseId": "lease_fixture_01",
+          "challengeId": "challenge_00000000000000000000000000000001",
+          "authorization": "fixture-authentication-not-a-production-secret",
+          "durationMilliseconds": 60000,
+          "renewAfterMilliseconds": 20000,
+          "stratum": {
+            "endpoint": "stratum+tcp://127.0.0.1:3333/",
+            "username": "fixture-session-user",
+            "password": "fixture-session-password"
+          }
+        }
+      },
+      "response": {
+        "protocolVersion": "bwg-worker-controller/0.4",
+        "requestId": "serial_vector_start",
+        "ok": true,
+        "result": {
+          "protocolVersion": "bwg-worker-controller/0.4",
+          "state": "mining",
+          "monotonicMilliseconds": 0,
+          "lease": {
+            "leaseId": "lease_fixture_01",
+            "challengeId": "challenge_00000000000000000000000000000001",
+            "renewAtMonotonicMilliseconds": 20000,
+            "expiresAtMonotonicMilliseconds": 60000
+          },
+          "restoration": {
+            "status": "pending"
+          }
+        }
+      }
+    },
+    {
+      "id": "serial_reject_oversized",
+      "request": {
+        "protocolVersion": "bwg-worker-controller/0.4",
+        "requestId": "serial_vector_rejected",
+        "command": "start_lease",
+        "payload": {
+          "protocolVersion": "bwg-worker-controller/0.4",
+          "leaseId": "lease_fixture_01",
+          "challengeId": "challenge_00000000000000000000000000000001",
+          "authorization": "fixture-authentication-not-a-production-secret",
+          "durationMilliseconds": 60001,
+          "renewAfterMilliseconds": 20000,
+          "stratum": {
+            "endpoint": "stratum+tcp://127.0.0.1:3333/",
+            "username": "fixture-session-user",
+            "password": "fixture-session-password"
+          }
+        }
+      },
+      "response": {
+        "protocolVersion": "bwg-worker-controller/0.4",
+        "requestId": "serial_vector_rejected",
+        "ok": false,
+        "error": {
+          "code": "command_rejected",
+          "message": "Worker Controller command was rejected"
+        }
+      }
+    }
+  ]
+}

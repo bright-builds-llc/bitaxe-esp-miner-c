@@ -1,5 +1,6 @@
 #include "asic_job_slot.h"
 #include <string.h>
+#include "bwg_v2_runtime.h"
 #include "esp_log.h"
 
 static const char *TAG = "asic_job_slot";
@@ -39,6 +40,7 @@ uint16_t asic_job_store_claim(asic_job_store_t *store, const asic_job_t *job)
     store->entries[slot].is_valid = true;
     pthread_mutex_unlock(&store->lock);
 
+    bwg_v2_note_dispatch(slot, job);
     return slot;
 }
 

@@ -25,6 +25,11 @@ static const char *TAG = "sv2_noise";
 // Handshake should complete within seconds; if the server doesn't respond fast we
 // want to fail and reconnect rather than block here for 3 minutes.
 #define HANDSHAKE_TIMEOUT_MS    10000
+// An observer is asked this often whether a read should go on.
+#define OBSERVED_WAIT_MS        250
+// An observed frame's clock starts at its first byte. A pool's silence before that is not a read.
+#define OBSERVED_FRAME_MS       10000
+#define NO_OP                   (-1)
 
 // Noise protocol name used to initialize h and ck
 static const char NOISE_PROTOCOL_NAME[] = "Noise_NX_Secp256k1+EllSwift_ChaChaPoly_SHA256";
@@ -46,17 +51,91 @@ struct sv2_noise_ctx {
     uint64_t recv_nonce;
     bool handshake_complete;
     secp256k1_context *secp_ctx;
+
+    const sv2_noise_observer_t *observer;
+    // A pool client sends from one task while another waits to receive, so each direction keeps its own.
+    int open_op;
+    int open_send_op;
+    sv2_noise_failure_t last_failure;
 };
+
+// --- Observer ---
+
+// Ends the direction's open operation as a success and begins `next`. NO_OP begins none.
+static void observe_slot_next(sv2_noise_ctx_t *ctx, int *open_op, int next)
+{
+    if (ctx->observer == NULL) {
+        return;
+    }
+    if (*open_op != NO_OP) {
+        ctx->observer->end((sv2_noise_op_t)*open_op, false);
+    }
+    *open_op = next;
+    if (next != NO_OP) {
+        ctx->observer->begin((sv2_noise_op_t)next);
+    }
+}
+
+static void observe_next(sv2_noise_ctx_t *ctx, int next)
+{
+    observe_slot_next(ctx, &ctx->open_op, next);
+}
+
+static void observe_send_next(sv2_noise_ctx_t *ctx, int next)
+{
+    observe_slot_next(ctx, &ctx->open_send_op, next);
+}
+
+// Ends whatever operation the call that just returned left open, with its result.
+static int observe_slot_result(sv2_noise_ctx_t *ctx, int *open_op, int result)
+{
+    if (ctx->observer != NULL && *open_op != NO_OP) {
+        ctx->observer->end((sv2_noise_op_t)*open_op, result != 0);
+        *open_op = NO_OP;
+    }
+    return result;
+}
+
+static int observe_result(sv2_noise_ctx_t *ctx, int result)
+{
+    return observe_slot_result(ctx, &ctx->open_op, result);
+}
+
+sv2_noise_failure_t sv2_noise_last_failure(const sv2_noise_ctx_t *ctx)
+{
+    return ctx->last_failure;
+}
+
+void sv2_noise_test_skip_handshake(sv2_noise_ctx_t *ctx)
+{
+    ctx->handshake_complete = true;
+}
+
+void sv2_noise_set_observer(sv2_noise_ctx_t *ctx, const sv2_noise_observer_t *observer)
+{
+    ctx->observer = observer;
+    ctx->open_op = NO_OP;
+    ctx->open_send_op = NO_OP;
+}
 
 // --- Transport helpers ---
 
-static int noise_recv_exact(esp_transport_handle_t transport, uint8_t *buf, int len, int timeout_ms)
+static int noise_recv_exact(sv2_noise_ctx_t *ctx, esp_transport_handle_t transport, uint8_t *buf, int len, int timeout_ms)
 {
     int received = 0;
+    const int64_t deadline_us = esp_timer_get_time() + (int64_t)timeout_ms * 1000;
     while (received < len) {
-        int r = esp_transport_read(transport, (char *)buf + received, len - received, timeout_ms);
+        const int wait_ms = ctx->observer != NULL ? OBSERVED_WAIT_MS : timeout_ms;
+        int r = esp_transport_read(transport, (char *)buf + received, len - received, wait_ms);
+        if (r == ERR_TCP_TRANSPORT_CONNECTION_TIMEOUT && ctx->observer != NULL && ctx->observer->keep_going() &&
+            esp_timer_get_time() < deadline_us) {
+            continue;
+        }
         if (r <= 0) {
             ESP_LOGD(TAG, "recv returned: r=%d", r);
+            ctx->last_failure = r == ERR_TCP_TRANSPORT_CONNECTION_TIMEOUT ? SV2_NOISE_FAILURE_TIMEOUT
+                                : r == ERR_TCP_TRANSPORT_CONNECTION_CLOSED_BY_FIN ? SV2_NOISE_FAILURE_EOF
+                                                                                  : SV2_NOISE_FAILURE_IO;
             return -1;
         }
         received += r;
@@ -318,8 +397,18 @@ static bool sv2_noise_selftest(secp256k1_context *secp_ctx)
     return true;
 }
 
-int sv2_noise_handshake(sv2_noise_ctx_t *ctx, esp_transport_handle_t transport,
-                        const uint8_t *authority_pubkey)
+#define CERTIFICATE_TIME_LEEWAY_SECONDS 10u
+// 2024-01-01. An earlier reading means SNTP never answered, so the window can't be judged.
+#define CLOCK_SET_AFTER_SECONDS 1704067200u
+
+bool sv2_noise_certificate_time_valid(uint32_t valid_from, uint32_t not_valid_after, uint32_t now)
+{
+    return now >= CLOCK_SET_AFTER_SECONDS && (uint64_t)now + CERTIFICATE_TIME_LEEWAY_SECONDS >= valid_from &&
+           (uint64_t)not_valid_after + CERTIFICATE_TIME_LEEWAY_SECONDS >= now;
+}
+
+static int noise_handshake(sv2_noise_ctx_t *ctx, esp_transport_handle_t transport,
+                           const uint8_t *authority_pubkey)
 {
     int64_t hs_start_us = esp_timer_get_time();
 
@@ -356,6 +445,8 @@ int sv2_noise_handshake(sv2_noise_ctx_t *ctx, esp_transport_handle_t transport,
     ESP_LOGI(TAG, "h after MixHash(prologue):");
     ESP_LOG_BUFFER_HEX_LEVEL(TAG, ctx->h, 32, ESP_LOG_INFO);
 
+    observe_next(ctx, SV2_NOISE_OP_ACT_ONE_CONSTRUCTION);
+
     // Step 2: Generate ephemeral keypair
     ESP_LOGI(TAG, "Generating ephemeral keypair (ElligatorSwift)");
     esp_fill_random(ctx->e_priv, 32);
@@ -376,6 +467,8 @@ int sv2_noise_handshake(sv2_noise_ctx_t *ctx, esp_transport_handle_t transport,
     // Since k=None at this point, this is just mix_hash(h, empty) = h = SHA-256(h)
     mix_hash(ctx->h, (const uint8_t *)"", 0);
 
+    observe_next(ctx, SV2_NOISE_OP_ACT_ONE_WRITE);
+
     // Step 4: Send our 64-byte encoded ephemeral pubkey (-> Act 1)
     ESP_LOGI(TAG, "-> Sending ephemeral public key (64 bytes)");
     ESP_LOGI(TAG, "e_pub (first 16):");
@@ -385,14 +478,18 @@ int sv2_noise_handshake(sv2_noise_ctx_t *ctx, esp_transport_handle_t transport,
         return -1;
     }
 
+    observe_next(ctx, SV2_NOISE_OP_ACT_TWO_READ);
+
     // Step 5: Receive 234 bytes (responder's message = Act 2)
     uint8_t resp[234];
     ESP_LOGI(TAG, "<- Waiting for server response...");
-    if (noise_recv_exact(transport, resp, 234, HANDSHAKE_TIMEOUT_MS) != 0) {
+    if (noise_recv_exact(ctx, transport, resp, 234, HANDSHAKE_TIMEOUT_MS) != 0) {
         ESP_LOGE(TAG, "Failed to receive server Noise response");
         return -1;
     }
     ESP_LOGI(TAG, "<- Received server response (234 bytes)");
+
+    observe_next(ctx, SV2_NOISE_OP_ACT_TWO_AUTHENTICATION);
 
     // Step 6: Parse responder ephemeral (bytes 0-63), mix into hash
     const uint8_t *re_pub = resp;
@@ -486,6 +583,11 @@ int sv2_noise_handshake(sv2_noise_ctx_t *ctx, esp_transport_handle_t transport,
 
     // Step 15: Verify Schnorr signature if authority pubkey provided
     if (authority_pubkey) {
+        if (!sv2_noise_certificate_time_valid(valid_from, not_valid_after, (uint32_t)time(NULL))) {
+            ESP_LOGE(TAG, "Server certificate is outside its validity window, or the clock is not set");
+            ctx->last_failure = SV2_NOISE_FAILURE_CERTIFICATE_TIME;
+            return -1;
+        }
         ESP_LOGI(TAG, "Verifying server certificate (Schnorr/BIP-340)...");
 
         // Decode the responder's static public key from ElligatorSwift to get x-only bytes
@@ -511,6 +613,7 @@ int sv2_noise_handshake(sv2_noise_ctx_t *ctx, esp_transport_handle_t transport,
         secp256k1_xonly_pubkey auth_pk;
         if (!secp256k1_xonly_pubkey_parse(ctx->secp_ctx, &auth_pk, authority_pubkey)) {
             ESP_LOGE(TAG, "Invalid authority public key");
+            ctx->last_failure = SV2_NOISE_FAILURE_WRONG_AUTHORITY;
             return -1;
         }
 
@@ -518,6 +621,7 @@ int sv2_noise_handshake(sv2_noise_ctx_t *ctx, esp_transport_handle_t transport,
         if (!secp256k1_schnorrsig_verify(ctx->secp_ctx, schnorr_sig,
                                           sig_hash, 32, &auth_pk)) {
             ESP_LOGE(TAG, "Server certificate INVALID - Schnorr signature verification failed!");
+            ctx->last_failure = SV2_NOISE_FAILURE_WRONG_AUTHORITY;
             return -1;
         }
 
@@ -572,12 +676,20 @@ int sv2_noise_handshake(sv2_noise_ctx_t *ctx, esp_transport_handle_t transport,
     return 0;
 }
 
-int sv2_noise_send(sv2_noise_ctx_t *ctx, esp_transport_handle_t transport,
-                   const uint8_t *frame, int frame_len)
+int sv2_noise_handshake(sv2_noise_ctx_t *ctx, esp_transport_handle_t transport,
+                        const uint8_t *authority_pubkey)
+{
+    return observe_result(ctx, noise_handshake(ctx, transport, authority_pubkey));
+}
+
+static int noise_send(sv2_noise_ctx_t *ctx, esp_transport_handle_t transport,
+                      const uint8_t *frame, int frame_len)
 {
     if (!ctx || !ctx->handshake_complete || frame_len < SV2_FRAME_HEADER_SIZE) {
         return -1;
     }
+
+    observe_send_next(ctx, SV2_NOISE_OP_FRAME_ENCRYPT);
 
     int payload_len = frame_len - SV2_FRAME_HEADER_SIZE;
 
@@ -588,6 +700,7 @@ int sv2_noise_send(sv2_noise_ctx_t *ctx, esp_transport_handle_t transport,
                           frame, SV2_FRAME_HEADER_SIZE, enc_hdr) != 0) {
             return -1;
         }
+        observe_send_next(ctx, SV2_NOISE_OP_FRAME_WRITE);
         return stratum_socket_send_all(transport, enc_hdr, 22) < 0 ? -1 : 0;
     }
 
@@ -613,14 +726,34 @@ int sv2_noise_send(sv2_noise_ctx_t *ctx, esp_transport_handle_t transport,
         return -1;
     }
 
+    observe_send_next(ctx, SV2_NOISE_OP_FRAME_WRITE);
     int ret = stratum_socket_send_all(transport, out, total_len) < 0 ? -1 : 0;
     if (out != stack_buf) free(out);
     return ret;
 }
 
-int sv2_noise_recv(sv2_noise_ctx_t *ctx, esp_transport_handle_t transport,
-                   uint8_t hdr_out[6], uint8_t *payload_out,
-                   int max_payload_len, int *payload_len_out)
+int sv2_noise_send(sv2_noise_ctx_t *ctx, esp_transport_handle_t transport,
+                   const uint8_t *frame, int frame_len)
+{
+    return ctx ? observe_slot_result(ctx, &ctx->open_send_op, noise_send(ctx, transport, frame, frame_len)) : -1;
+}
+
+// Waits for the frame's first byte while the observer wants to go on. False means it stopped wanting to.
+// A socket error counts as ready, so that the read which meets it reports it.
+static bool observed_wait_for_frame(sv2_noise_ctx_t *ctx, esp_transport_handle_t transport)
+{
+    while (ctx->observer->keep_going()) {
+        if (esp_transport_poll_read(transport, OBSERVED_WAIT_MS) != 0) {
+            return true;
+        }
+    }
+    ctx->last_failure = SV2_NOISE_FAILURE_TIMEOUT;
+    return false;
+}
+
+static int noise_recv(sv2_noise_ctx_t *ctx, esp_transport_handle_t transport,
+                      uint8_t hdr_out[6], uint8_t *payload_out,
+                      int max_payload_len, int *payload_len_out)
 {
     if (!ctx || !ctx->handshake_complete) {
         return -1;
@@ -628,12 +761,19 @@ int sv2_noise_recv(sv2_noise_ctx_t *ctx, esp_transport_handle_t transport,
 
     *payload_len_out = 0;
 
+    if (ctx->observer != NULL && !observed_wait_for_frame(ctx, transport)) {
+        return -1;
+    }
+    const int frame_ms = ctx->observer != NULL ? OBSERVED_FRAME_MS : RECV_TIMEOUT_MS;
+
     // Receive and decrypt header (22 bytes -> 6 bytes)
     uint8_t enc_hdr[22];
-    if (noise_recv_exact(transport, enc_hdr, 22, RECV_TIMEOUT_MS) != 0) {
+    observe_next(ctx, SV2_NOISE_OP_FRAME_READ);
+    if (noise_recv_exact(ctx, transport, enc_hdr, 22, frame_ms) != 0) {
         return -1;
     }
 
+    observe_next(ctx, SV2_NOISE_OP_HEADER_DECRYPT);
     if (noise_decrypt(ctx->recv_key_id, ctx->recv_nonce++, NULL, 0,
                       enc_hdr, 22, hdr_out) != 0) {
         ESP_LOGE(TAG, "Failed to decrypt frame header");
@@ -659,11 +799,13 @@ int sv2_noise_recv(sv2_noise_ctx_t *ctx, esp_transport_handle_t transport,
     uint8_t *enc_payload = (enc_len <= (int)sizeof(stack_payload)) ? stack_payload : malloc(enc_len);
     if (!enc_payload) return -1;
 
-    if (noise_recv_exact(transport, enc_payload, enc_len, RECV_TIMEOUT_MS) != 0) {
+    observe_next(ctx, SV2_NOISE_OP_FRAME_READ);
+    if (noise_recv_exact(ctx, transport, enc_payload, enc_len, frame_ms) != 0) {
         if (enc_payload != stack_payload) free(enc_payload);
         return -1;
     }
 
+    observe_next(ctx, SV2_NOISE_OP_PAYLOAD_DECRYPT);
     if (noise_decrypt(ctx->recv_key_id, ctx->recv_nonce++, NULL, 0,
                       enc_payload, enc_len, payload_out) != 0) {
         ESP_LOGE(TAG, "Failed to decrypt payload");
@@ -674,4 +816,18 @@ int sv2_noise_recv(sv2_noise_ctx_t *ctx, esp_transport_handle_t transport,
     if (enc_payload != stack_payload) free(enc_payload);
     *payload_len_out = hdr.msg_length;
     return 0;
+}
+
+int sv2_noise_recv(sv2_noise_ctx_t *ctx, esp_transport_handle_t transport,
+                   uint8_t hdr_out[6], uint8_t *payload_out,
+                   int max_payload_len, int *payload_len_out)
+{
+    if (!ctx) {
+        return -1;
+    }
+    int result = observe_result(ctx, noise_recv(ctx, transport, hdr_out, payload_out, max_payload_len, payload_len_out));
+    if (result == 0 && ctx->observer != NULL && !ctx->observer->frame(hdr_out, payload_out, *payload_len_out)) {
+        return -1;
+    }
+    return result;
 }

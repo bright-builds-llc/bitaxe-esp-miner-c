@@ -1,0 +1,298 @@
+{
+  "profile": "bwg-worker-deployment-trust/0.2",
+  "classification": "development_deployment_public_artifacts",
+  "maximumCompactJwsBytes": 481,
+  "controllerAuthorizationLimitBytes": 512,
+  "authorizationBoundaries": [
+    {
+      "bytes": 511,
+      "expected": "controller_syntax_accepted"
+    },
+    {
+      "bytes": 512,
+      "expected": "controller_syntax_accepted"
+    },
+    {
+      "bytes": 513,
+      "expected": "controller_syntax_rejected"
+    }
+  ],
+  "trust": {
+    "profile": "bwg-worker-deployment-trust/0.2",
+    "updateAuthority": {
+      "issuer": "development-update-authority",
+      "audience": "bwg-reference-firmware-capability/0.2",
+      "role": "update_authority",
+      "keys": [
+        {
+          "kid": "fixture-serial-update",
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "h2FkuS6pe-kbUYWeO5RZt1OBr1FrsnIJU_GxzXiFShA",
+          "alg": "Ed25519",
+          "use": "sig",
+          "key_ops": [
+            "verify"
+          ]
+        }
+      ]
+    },
+    "workLeaseAuthority": {
+      "profile": "bwg-worker-deployment-trust/0.2",
+      "issuer": "development-worker-lease-authority",
+      "audience": "bwg-worker-controller/0.4",
+      "role": "work_lease_authority",
+      "keys": [
+        {
+          "kid": "fixture-serial-lease",
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "oqVLcb9xO7-KjOQMBCbEVDyi_nZHuAnDoKtx0GMZhak",
+          "alg": "Ed25519",
+          "use": "sig",
+          "key_ops": [
+            "verify"
+          ]
+        }
+      ]
+    }
+  },
+  "ultra205": {
+    "capabilityInput": {
+      "capability": {
+        "protocolVersion": "bwg-worker-controller/0.4",
+        "board": {
+          "model": "bitaxe-ultra",
+          "revision": "205",
+          "usbTransport": "web_serial"
+        },
+        "firmware": {
+          "name": "bright-builds-reference-firmware",
+          "version": "0.1.0"
+        },
+        "compatibility": {
+          "referenceFirmware": true,
+          "workLease": "supported",
+          "miningBaselineRestoration": "supported",
+          "settingsPreservation": "compatible"
+        },
+        "transportProfile": "bwg-worker-serial/0.2"
+      },
+      "manifest": {
+        "profile": "bwg-worker-serial/0.2",
+        "qualificationAttemptProfile": "worker-qualification-attempt-v1",
+        "poolDifficultyHintProfile": "worker-stratum-difficulty-hint-v1",
+        "transport": "esp32s3_usb_serial_jtag",
+        "baudRate": 115200,
+        "framing": "utf8_ndjson",
+        "maximumControlPayloadBytes": 65536,
+        "maximumWireFrameBytes": 66560,
+        "heartbeatIntervalMilliseconds": 1000,
+        "heartbeatTimeoutMilliseconds": 2800,
+        "foregroundOnly": true,
+        "hostToDeviceReceiveWindowBytes": 2048,
+        "maximumHostWriteChunkBytes": 1024,
+        "recordWriteTimeoutMilliseconds": 2000,
+        "payloadIntegrity": "sha256_exact_utf8_json"
+      }
+    },
+    "signedCapability": {
+      "protocolVersion": "bwg-worker-controller/0.4",
+      "board": {
+        "model": "bitaxe-ultra",
+        "revision": "205",
+        "usbTransport": "web_serial"
+      },
+      "firmware": {
+        "name": "bright-builds-reference-firmware",
+        "version": "0.1.0"
+      },
+      "compatibility": {
+        "referenceFirmware": true,
+        "workLease": "supported",
+        "miningBaselineRestoration": "supported",
+        "settingsPreservation": "compatible"
+      },
+      "transportProfile": "bwg-worker-serial/0.2",
+      "attestation": {
+        "claims": {
+          "profile": "bwg-reference-firmware-capability/0.2",
+          "protocolVersion": "bwg-worker-controller/0.4",
+          "board": {
+            "model": "bitaxe-ultra",
+            "revision": "205"
+          },
+          "firmware": {
+            "name": "bright-builds-reference-firmware",
+            "version": "0.1.0"
+          },
+          "compatibility": {
+            "referenceFirmware": true,
+            "workLease": "supported",
+            "miningBaselineRestoration": "supported",
+            "settingsPreservation": "compatible"
+          },
+          "transportProfile": "bwg-worker-serial/0.2",
+          "serialManifestSha256": "pDwsfWH5X8bHMTqyB0SgAxTKA0_KpzBqdSLxMpKVNhU"
+        },
+        "compactJws": "eyJhbGciOiJFZDI1NTE5Iiwia2lkIjoiZml4dHVyZS1zZXJpYWwtdXBkYXRlIiwidHlwIjoiYndnLXdvcmtlci1jYXBhYmlsaXR5K2p3cyJ9.eyJib2FyZCI6eyJtb2RlbCI6ImJpdGF4ZS11bHRyYSIsInJldmlzaW9uIjoiMjA1In0sImNvbXBhdGliaWxpdHkiOnsibWluaW5nQmFzZWxpbmVSZXN0b3JhdGlvbiI6InN1cHBvcnRlZCIsInJlZmVyZW5jZUZpcm13YXJlIjp0cnVlLCJzZXR0aW5nc1ByZXNlcnZhdGlvbiI6ImNvbXBhdGlibGUiLCJ3b3JrTGVhc2UiOiJzdXBwb3J0ZWQifSwiZmlybXdhcmUiOnsibmFtZSI6ImJyaWdodC1idWlsZHMtcmVmZXJlbmNlLWZpcm13YXJlIiwidmVyc2lvbiI6IjAuMS4wIn0sInByb2ZpbGUiOiJid2ctcmVmZXJlbmNlLWZpcm13YXJlLWNhcGFiaWxpdHkvMC4yIiwicHJvdG9jb2xWZXJzaW9uIjoiYndnLXdvcmtlci1jb250cm9sbGVyLzAuNCIsInNlcmlhbE1hbmlmZXN0U2hhMjU2IjoicER3c2ZXSDVYOGJITVRxeUIwU2dBeFRLQTBfS3B6QnFkU0x4TXBLVk5oVSIsInRyYW5zcG9ydFByb2ZpbGUiOiJid2ctd29ya2VyLXNlcmlhbC8wLjIifQ.ZGsud2_78H4mT0wmBsy_dvfJrX7ipffTCGdBvCnoo7Bn64Izw85WTehbpYN6R3Yy_m-INj3s8NbawQkY0qrpDg"
+      }
+    }
+  },
+  "start": {
+    "input": {
+      "operation": "start",
+      "activeChallengeId": "challenge_00000000000000000000000000000001",
+      "controlSessionBindingSha256": "jEc1ro90lL2fX0ZozUbY0XpmxrC46gEkEUKKTyGj0Zs",
+      "request": {
+        "protocolVersion": "bwg-worker-controller/0.4",
+        "leaseId": "lease_fixture_01",
+        "challengeId": "challenge_00000000000000000000000000000001",
+        "durationMilliseconds": 60000,
+        "renewAfterMilliseconds": 20000,
+        "stratum": {
+          "endpoint": "stratum+tcp://127.0.0.1:3333/",
+          "username": "fixture-session-user",
+          "password": "fixture-session-password"
+        }
+      }
+    },
+    "artifact": {
+      "profile": "bwg-worker-lease-authorization-artifact/0.1",
+      "operation": "start",
+      "sequence": "1",
+      "authorization": "eyJhbGciOiJFZDI1NTE5Iiwia2lkIjoiZml4dHVyZS1zZXJpYWwtbGVhc2UiLCJ0eXAiOiJid2ctd29ya2VyLWxlYXNlLWF1dGhvcml6YXRpb24randzIn0.eyJjb250cm9sU2Vzc2lvbkJpbmRpbmdTaGEyNTYiOiJqRWMxcm85MGxMMmZYMFpvelViWTBYcG14ckM0NmdFa0VVS0tUeUdqMFpzIiwib3BlcmF0aW9uIjoic3RhcnQiLCJyZXF1ZXN0U2hhMjU2IjoidFRtSkNTOXhsLVVOWTVvQ0lKNmN5d29jWnM2cVpRRjcxd1dFRjBGRkhuZyIsInNlcXVlbmNlIjoiMSJ9.b3pzFm7lFZ5AAQJv_5QvLDOZlsTBdE6FeFnzyvbh9GtSU08UFfXHV0rytUlxfnMUdsoB5lWSQh-iZ2rcutMXAQ"
+    }
+  },
+  "renew": {
+    "input": {
+      "operation": "renew",
+      "activeChallengeId": "challenge_00000000000000000000000000000001",
+      "controlSessionBindingSha256": "jEc1ro90lL2fX0ZozUbY0XpmxrC46gEkEUKKTyGj0Zs",
+      "request": {
+        "protocolVersion": "bwg-worker-controller/0.4",
+        "leaseId": "lease_fixture_01",
+        "durationMilliseconds": 60000,
+        "renewAfterMilliseconds": 20000
+      }
+    },
+    "artifact": {
+      "profile": "bwg-worker-lease-authorization-artifact/0.1",
+      "operation": "renew",
+      "sequence": "2",
+      "authorization": "eyJhbGciOiJFZDI1NTE5Iiwia2lkIjoiZml4dHVyZS1zZXJpYWwtbGVhc2UiLCJ0eXAiOiJid2ctd29ya2VyLWxlYXNlLWF1dGhvcml6YXRpb24randzIn0.eyJjb250cm9sU2Vzc2lvbkJpbmRpbmdTaGEyNTYiOiJqRWMxcm85MGxMMmZYMFpvelViWTBYcG14ckM0NmdFa0VVS0tUeUdqMFpzIiwib3BlcmF0aW9uIjoicmVuZXciLCJyZXF1ZXN0U2hhMjU2IjoiSmJYbFpTSENYZDhwQUpabWtsRXZRZGRHRkpjeUlJcnZWd2dvYjZYYjNyUSIsInNlcXVlbmNlIjoiMiJ9.MwyFpF0H3ap308m5f4Mc-75ZIFj0LJMnocAOY4KCDR8UQY_LCiRBVeixQPmc9fBZXtXHnRLaMF-7_IAfhEIpCg"
+    }
+  },
+  "negativeCases": [
+    {
+      "id": "wrong_authority_role",
+      "operation": "verify_with_update_key",
+      "parameters": {
+        "role": "update_authority"
+      },
+      "expectedError": "invalid_authorization"
+    },
+    {
+      "id": "changed_request",
+      "operation": "change_stratum_terms",
+      "parameters": {
+        "changedPassword": "changed"
+      },
+      "expectedError": "invalid_authorization"
+    },
+    {
+      "id": "changed_context",
+      "operation": "change_control_session_binding",
+      "parameters": {
+        "controlSessionBindingSha256": "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"
+      },
+      "expectedError": "invalid_authorization"
+    },
+    {
+      "id": "same_nonce_different_identity",
+      "operation": "change_verified_possession_transcript",
+      "parameters": {
+        "controlSessionBindingSha256": "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"
+      },
+      "expectedError": "invalid_authorization"
+    },
+    {
+      "id": "replayed_sequence",
+      "operation": "reuse_accepted_sequence",
+      "parameters": {
+        "highWater": "1",
+        "presentedSequence": "1"
+      },
+      "expectedError": "replay"
+    },
+    {
+      "id": "withheld_context",
+      "operation": "present_after_context_expiry",
+      "parameters": {
+        "establishedAtMonotonicMilliseconds": 1000,
+        "presentedAtMonotonicMilliseconds": 61000
+      },
+      "expectedError": "context_expired"
+    },
+    {
+      "id": "post_restore_context",
+      "operation": "present_after_restoration",
+      "parameters": {
+        "lifecycleEvent": "restoration"
+      },
+      "expectedError": "context_invalid"
+    },
+    {
+      "id": "post_reboot_context",
+      "operation": "present_after_reboot",
+      "parameters": {
+        "lifecycleEvent": "reboot"
+      },
+      "expectedError": "context_invalid"
+    },
+    {
+      "id": "cross_session_replay",
+      "operation": "reuse_sequence_in_new_context",
+      "parameters": {
+        "controlSessionBindingSha256": "UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU",
+        "highWater": "1",
+        "presentedSequence": "1"
+      },
+      "expectedError": "replay"
+    },
+    {
+      "id": "monotonic_reset",
+      "operation": "present_after_monotonic_reset",
+      "parameters": {
+        "establishedAtMonotonicMilliseconds": 1000,
+        "presentedAtMonotonicMilliseconds": 999
+      },
+      "expectedError": "monotonic_invalid"
+    },
+    {
+      "id": "corrupt_high_water",
+      "operation": "load_corrupt_high_water",
+      "parameters": {
+        "corruptHighWater": "-1",
+        "presentedSequence": "1"
+      },
+      "expectedError": "state_invalid"
+    },
+    {
+      "id": "sequence_overflow",
+      "operation": "allocate_after_u64_max",
+      "parameters": {
+        "currentSequence": "18446744073709551615"
+      },
+      "expectedError": "sequence_exhausted"
+    },
+    {
+      "id": "authorization_513_bytes",
+      "operation": "oversized_authorization",
+      "parameters": {
+        "authorizationBytes": 513
+      },
+      "expectedError": "invalid_authorization"
+    }
+  ]
+}

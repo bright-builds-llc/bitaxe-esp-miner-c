@@ -1,0 +1,212 @@
+{
+  "classification": "public-rfc8032-conformance-only",
+  "trust": {
+    "profile": "bwg-worker-deployment-trust/0.2",
+    "issuer": "fixture-qualification-attempt",
+    "audience": "bwg-worker-controller/0.4",
+    "role": "work_lease_authority",
+    "keys": [
+      {
+        "kid": "rfc8032",
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+        "alg": "Ed25519",
+        "use": "sig",
+        "key_ops": [
+          "verify"
+        ]
+      }
+    ]
+  },
+  "vectors": [
+    {
+      "purpose": "diagnostic",
+      "input": {
+        "operation": "start",
+        "activeChallengeId": "challenge_00000000000000000000000000000001",
+        "controlSessionBindingSha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "request": {
+          "protocolVersion": "bwg-worker-controller/0.4",
+          "durationMilliseconds": 60000,
+          "renewAfterMilliseconds": 20000,
+          "qualificationAttempt": {
+            "schema": "worker-qualification-attempt-v1",
+            "id": "AAAAAAAAAAAAAAAAAAAAAA",
+            "ordinal": 1,
+            "purpose": "diagnostic",
+            "maximumActiveMilliseconds": 30000
+          },
+          "leaseId": "lease_fixture_01",
+          "challengeId": "challenge_00000000000000000000000000000001",
+          "stratum": {
+            "endpoint": "stratum+tcp://127.0.0.1:3333/",
+            "username": "fixture-session-user",
+            "password": "fixture-session-password"
+          }
+        }
+      },
+      "grant": {
+        "protocolVersion": "bwg-worker-controller/0.4",
+        "durationMilliseconds": 60000,
+        "renewAfterMilliseconds": 20000,
+        "qualificationAttempt": {
+          "schema": "worker-qualification-attempt-v1",
+          "id": "AAAAAAAAAAAAAAAAAAAAAA",
+          "ordinal": 1,
+          "purpose": "diagnostic",
+          "maximumActiveMilliseconds": 30000
+        },
+        "leaseId": "lease_fixture_01",
+        "challengeId": "challenge_00000000000000000000000000000001",
+        "stratum": {
+          "endpoint": "stratum+tcp://127.0.0.1:3333/",
+          "username": "fixture-session-user",
+          "password": "fixture-session-password"
+        },
+        "authorization": "eyJhbGciOiJFZDI1NTE5Iiwia2lkIjoicmZjODAzMiIsInR5cCI6ImJ3Zy13b3JrZXItbGVhc2UtYXV0aG9yaXphdGlvbitqd3MifQ.eyJjb250cm9sU2Vzc2lvbkJpbmRpbmdTaGEyNTYiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIiwib3BlcmF0aW9uIjoic3RhcnQiLCJyZXF1ZXN0U2hhMjU2IjoibG85NF8wMjFYclhQUGZxRzRWWjRLenR5U2pRZmRqczdKYXo0bUVSMjNHRSIsInNlcXVlbmNlIjoiMSJ9.lQ6zVxYgw6vRBInimlO_1u4C5OFjeWTvsYpdIwwRljFD7fqUNinnVJv0u8oQH360PFe3kmm8-TU0qWsItq2vDQ"
+      }
+    },
+    {
+      "purpose": "normal",
+      "input": {
+        "operation": "start",
+        "activeChallengeId": "challenge_00000000000000000000000000000001",
+        "controlSessionBindingSha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "request": {
+          "protocolVersion": "bwg-worker-controller/0.4",
+          "durationMilliseconds": 60000,
+          "renewAfterMilliseconds": 20000,
+          "qualificationAttempt": {
+            "schema": "worker-qualification-attempt-v1",
+            "id": "AAAAAAAAAAAAAAAAAAAAAA",
+            "ordinal": 2,
+            "purpose": "normal",
+            "maximumActiveMilliseconds": 180000
+          },
+          "leaseId": "lease_fixture_01",
+          "challengeId": "challenge_00000000000000000000000000000001",
+          "stratum": {
+            "endpoint": "stratum+tcp://127.0.0.1:3333/",
+            "username": "fixture-session-user",
+            "password": "fixture-session-password"
+          }
+        }
+      },
+      "grant": {
+        "protocolVersion": "bwg-worker-controller/0.4",
+        "durationMilliseconds": 60000,
+        "renewAfterMilliseconds": 20000,
+        "qualificationAttempt": {
+          "schema": "worker-qualification-attempt-v1",
+          "id": "AAAAAAAAAAAAAAAAAAAAAA",
+          "ordinal": 2,
+          "purpose": "normal",
+          "maximumActiveMilliseconds": 180000
+        },
+        "leaseId": "lease_fixture_01",
+        "challengeId": "challenge_00000000000000000000000000000001",
+        "stratum": {
+          "endpoint": "stratum+tcp://127.0.0.1:3333/",
+          "username": "fixture-session-user",
+          "password": "fixture-session-password"
+        },
+        "authorization": "eyJhbGciOiJFZDI1NTE5Iiwia2lkIjoicmZjODAzMiIsInR5cCI6ImJ3Zy13b3JrZXItbGVhc2UtYXV0aG9yaXphdGlvbitqd3MifQ.eyJjb250cm9sU2Vzc2lvbkJpbmRpbmdTaGEyNTYiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIiwib3BlcmF0aW9uIjoic3RhcnQiLCJyZXF1ZXN0U2hhMjU2IjoiUG1JSE4xY01hUm5RVFI3NHVIcFdIeTlxUm9xWXFsNDdnd1Q1U3RFVHdZbyIsInNlcXVlbmNlIjoiMiJ9.30uyPABBfbPkw0Qt3mBwlaMYZDBJZJ70Zf60GxvRxkXWI2JWTzlJxMBMfSvxOnZ6xhFspY1kNZh_6pwfibE_DA"
+      }
+    },
+    {
+      "purpose": "foreground_loss",
+      "input": {
+        "operation": "start",
+        "activeChallengeId": "challenge_00000000000000000000000000000001",
+        "controlSessionBindingSha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "request": {
+          "protocolVersion": "bwg-worker-controller/0.4",
+          "durationMilliseconds": 60000,
+          "renewAfterMilliseconds": 20000,
+          "qualificationAttempt": {
+            "schema": "worker-qualification-attempt-v1",
+            "id": "AAAAAAAAAAAAAAAAAAAAAA",
+            "ordinal": 3,
+            "purpose": "foreground_loss",
+            "maximumActiveMilliseconds": 30000
+          },
+          "leaseId": "lease_fixture_01",
+          "challengeId": "challenge_00000000000000000000000000000001",
+          "stratum": {
+            "endpoint": "stratum+tcp://127.0.0.1:3333/",
+            "username": "fixture-session-user",
+            "password": "fixture-session-password"
+          }
+        }
+      },
+      "grant": {
+        "protocolVersion": "bwg-worker-controller/0.4",
+        "durationMilliseconds": 60000,
+        "renewAfterMilliseconds": 20000,
+        "qualificationAttempt": {
+          "schema": "worker-qualification-attempt-v1",
+          "id": "AAAAAAAAAAAAAAAAAAAAAA",
+          "ordinal": 3,
+          "purpose": "foreground_loss",
+          "maximumActiveMilliseconds": 30000
+        },
+        "leaseId": "lease_fixture_01",
+        "challengeId": "challenge_00000000000000000000000000000001",
+        "stratum": {
+          "endpoint": "stratum+tcp://127.0.0.1:3333/",
+          "username": "fixture-session-user",
+          "password": "fixture-session-password"
+        },
+        "authorization": "eyJhbGciOiJFZDI1NTE5Iiwia2lkIjoicmZjODAzMiIsInR5cCI6ImJ3Zy13b3JrZXItbGVhc2UtYXV0aG9yaXphdGlvbitqd3MifQ.eyJjb250cm9sU2Vzc2lvbkJpbmRpbmdTaGEyNTYiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIiwib3BlcmF0aW9uIjoic3RhcnQiLCJyZXF1ZXN0U2hhMjU2IjoidG5RWkdXZmxDTzdpeWk1WjE1SmwxVHIydEh6Z2RWUGxPbVZMbjNDMGw3VSIsInNlcXVlbmNlIjoiMyJ9.IKmd-FoVXzDnLaAHuedYqsW_lFL19XZsyR6OSulkzR5ZSfkY9PzAOHGNU3tjUj5P83uR-nm_CEd_gaIAIn3_AA"
+      }
+    },
+    {
+      "purpose": "heartbeat_loss",
+      "input": {
+        "operation": "start",
+        "activeChallengeId": "challenge_00000000000000000000000000000001",
+        "controlSessionBindingSha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "request": {
+          "protocolVersion": "bwg-worker-controller/0.4",
+          "durationMilliseconds": 60000,
+          "renewAfterMilliseconds": 20000,
+          "qualificationAttempt": {
+            "schema": "worker-qualification-attempt-v1",
+            "id": "AAAAAAAAAAAAAAAAAAAAAA",
+            "ordinal": 4,
+            "purpose": "heartbeat_loss",
+            "maximumActiveMilliseconds": 30000
+          },
+          "leaseId": "lease_fixture_01",
+          "challengeId": "challenge_00000000000000000000000000000001",
+          "stratum": {
+            "endpoint": "stratum+tcp://127.0.0.1:3333/",
+            "username": "fixture-session-user",
+            "password": "fixture-session-password"
+          }
+        }
+      },
+      "grant": {
+        "protocolVersion": "bwg-worker-controller/0.4",
+        "durationMilliseconds": 60000,
+        "renewAfterMilliseconds": 20000,
+        "qualificationAttempt": {
+          "schema": "worker-qualification-attempt-v1",
+          "id": "AAAAAAAAAAAAAAAAAAAAAA",
+          "ordinal": 4,
+          "purpose": "heartbeat_loss",
+          "maximumActiveMilliseconds": 30000
+        },
+        "leaseId": "lease_fixture_01",
+        "challengeId": "challenge_00000000000000000000000000000001",
+        "stratum": {
+          "endpoint": "stratum+tcp://127.0.0.1:3333/",
+          "username": "fixture-session-user",
+          "password": "fixture-session-password"
+        },
+        "authorization": "eyJhbGciOiJFZDI1NTE5Iiwia2lkIjoicmZjODAzMiIsInR5cCI6ImJ3Zy13b3JrZXItbGVhc2UtYXV0aG9yaXphdGlvbitqd3MifQ.eyJjb250cm9sU2Vzc2lvbkJpbmRpbmdTaGEyNTYiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIiwib3BlcmF0aW9uIjoic3RhcnQiLCJyZXF1ZXN0U2hhMjU2IjoiVGlSSERQUFU0WVRlaDZBNndmVVNYYTJyTG9UU3hIU21YR1NGUWs5UlJ1MCIsInNlcXVlbmNlIjoiNCJ9.3qAyX17BS2L-3y6CsRfWiFVZ2L6Ell9-rV7sT-kbErFyO__oI0XilE8JvHkP1vmWqJeeW8enbBS_-tY9rTlDDg"
+      }
+    }
+  ]
+}

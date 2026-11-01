@@ -1,0 +1,11 @@
+menu "Bitcoin Work Gate worker"
+
+    config BWG_REVOCATION_PROOF
+        bool "Revocation proof test variant"
+        default n
+        help
+            Test images only. Adds a task that drives real stops and leases
+            through the revocation path and logs timings for hardware evidence.
+            It takes over mining, so never enable this in a released image.
+
+endmenu

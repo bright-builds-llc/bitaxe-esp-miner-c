@@ -20,6 +20,10 @@
 #include "nvs_config.h"
 #include "miner_job.h"
 #include "self_test.h"
+#include "bwg_boot_guard.h"
+#include "bwg_evidence.h"
+#include "bwg_gate.h"
+#include "bwg_panic_cutoff.h"
 #include "asic.h"
 #include "bap/bap.h"
 #include "device_config.h"
@@ -42,6 +46,7 @@ static const char * TAG = "bitaxe";
 
 static void heap_alloc_failed_hook(size_t requested_size, uint32_t caps, const char *function_name)
 {
+    bwg_evidence_note_allocation_failure(requested_size, caps);
     if (caps & MALLOC_CAP_SPIRAM) {
         ESP_EARLY_LOGE(TAG, "%s failed to allocate %zu bytes from PSRAM", function_name, requested_size);
         abort();
@@ -131,6 +136,7 @@ void app_main(void)
         ESP_LOGE(TAG, "Failed to init device config");
         return;
     }
+    bwg_panic_cutoff_configure(&GLOBAL_STATE.DEVICE_CONFIG);
 
     // Init I2C
     if (GLOBAL_STATE.DEVICE_CONFIG.pins.i2c != NULL) {
@@ -149,6 +155,7 @@ void app_main(void)
     }
 
     SYSTEM_init_system(&GLOBAL_STATE);
+    bwg_boot_guard_apply(&GLOBAL_STATE);
     if (scoreboard_init(&GLOBAL_STATE.SYSTEM_MODULE.scoreboard) != ESP_OK) {
         ESP_LOGE(TAG, "Failed to init scoreboard");
     }
@@ -231,7 +238,8 @@ void app_main(void)
     miner_job_pool_init();
 
     if (system_init_ret == ESP_OK) {
-        if (asic_initialize(&GLOBAL_STATE, ASIC_INIT_COLD_BOOT, 0) == 0) {
+        // A boot the crash-loop guard paused leaves the ASIC off. Whatever starts mining later initializes it.
+        if (!GLOBAL_STATE.SYSTEM_MODULE.mining_paused && asic_initialize(&GLOBAL_STATE, ASIC_INIT_COLD_BOOT, 0) == 0) {
             if (!GLOBAL_STATE.SELF_TEST_MODULE.is_active) {
                 return;
             }
@@ -259,6 +267,10 @@ void app_main(void)
         if (xTaskCreateWithCaps(stratum_task, "stratum", 16384, (void *) &GLOBAL_STATE, 16, NULL, MALLOC_CAP_SPIRAM) != pdPASS) {
             ESP_LOGE(TAG, "Error creating stratum task");
         }
+    }
+
+    if (!GLOBAL_STATE.SELF_TEST_MODULE.is_active) {
+        bwg_gate_start(&GLOBAL_STATE);
     }
 
     if (GLOBAL_STATE.SELF_TEST_MODULE.is_active) {

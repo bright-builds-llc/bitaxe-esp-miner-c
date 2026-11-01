@@ -19,6 +19,7 @@
 #include "freertos/task.h"
 #include "stratum_timing.h"
 #include "difficulty_controller.h"
+#include "bwg_mining.h"
 
 #define PROBE_RECV_BUFFER_SIZE 2048
 
@@ -131,7 +132,7 @@ esp_err_t stratum_v1_run(GlobalState *GLOBAL_STATE, uint16_t pool_idx)
         return ESP_ERR_INVALID_ARG;
     }
 
-    PoolConfig *pool = &GLOBAL_STATE->SYSTEM_MODULE.pools[pool_idx];
+    PoolConfig *pool = bwg_mining_pool_or(&GLOBAL_STATE->SYSTEM_MODULE.pools[pool_idx]);
     char stratum_url[256] = {0};
     char username[256] = {0};
     char password[256] = {0};
@@ -245,7 +246,7 @@ esp_err_t stratum_v1_run(GlobalState *GLOBAL_STATE, uint16_t pool_idx)
             break;
         }
 
-        if (GLOBAL_STATE->SYSTEM_MODULE.mining_paused || GLOBAL_STATE->SYSTEM_MODULE.hardware_fault) {
+        if (GLOBAL_STATE->SYSTEM_MODULE.mining_paused || GLOBAL_STATE->SYSTEM_MODULE.hardware_fault || bwg_revocation_stop_wanted()) {
             ESP_LOGI(TAG, "Mining paused, disconnecting from pool");
             run_result = ESP_OK;
             break;

@@ -8,6 +8,7 @@
 #include "esp_heap_caps.h"
 #include "global_state.h"
 #include "system_api_json.h"
+#include "bwg_mining.h"
 #include "system.h"
 #include "nvs_config.h"
 #include "sv2_protocol.h"
@@ -101,7 +102,13 @@ static void system_api_add_telemetry(yyjson_mut_doc *doc, yyjson_mut_val *root, 
     yyjson_mut_obj_add_double(doc, root, "totalLog2Work", SYSTEM_noinit_get_total_log2_work());
     yyjson_mut_obj_add_float(doc, root, "cpuUsage", g->SYSTEM_MODULE.cpu_usage);
     yyjson_mut_obj_add_bool(doc, root, "miningPaused", g->SYSTEM_MODULE.mining_paused);
+    yyjson_mut_obj_add_str(doc, root, "miningActivity", bwg_mining_activity(g));
+    const char *pause_reason = bwg_mining_pause_reason(g);
+    if (pause_reason != NULL) {
+        yyjson_mut_obj_add_str(doc, root, "pauseReason", pause_reason);
+    }
     yyjson_mut_obj_add_int(doc, root, "overheat_mode", g->SYSTEM_MODULE.overheat_mode ? 1 : 0);
+    yyjson_mut_obj_add_int(doc, root, "mineOnBoot", nvs_config_get_bool(NVS_CONFIG_MINE_ON_BOOT) ? 1 : 0);
     yyjson_mut_obj_add_strcpy(doc, root, "wifiStatus", g->SYSTEM_MODULE.wifi_status);
 
     int8_t rssi = -90;

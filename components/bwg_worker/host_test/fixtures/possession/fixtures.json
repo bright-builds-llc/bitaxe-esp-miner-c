@@ -1,0 +1,275 @@
+{
+  "profile": "bwg-worker-possession/0.2",
+  "proofProfile": "bwg-worker-possession-proof/0.2",
+  "fixtureIdentity": {
+    "classification": "non_production_conformance_only",
+    "publicJwk": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+      "alg": "Ed25519",
+      "use": "sig",
+      "key_ops": [
+        "verify"
+      ]
+    },
+    "fingerprintSha256": "hY0InB-Rsm_aD1yTwooBeb9rZ70sRetubQskIJmm490"
+  },
+  "initialAdmission": {
+    "request": {
+      "profile": "bwg-worker-possession/0.2",
+      "requestId": "pos_initial_01",
+      "command": "prove_possession",
+      "payload": {
+        "possessionNonce": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE",
+        "challengeBindingSha256": "X4zZvQZS4kl8eriGLhoxvxVwcFz5Tx40nnKDBbgLW6k",
+        "controllerCapabilitySha256": "OUAcmoLu-Sjv6nq6fqavz8_3Ev18z7ziNXuEN3FVUrg",
+        "sessionId": "AgICAgICAgICAgICAgICAg",
+        "hostNonce": "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM",
+        "deviceNonce": "BAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ",
+        "serialManifestSha256": "pDwsfWH5X8bHMTqyB0SgAxTKA0_KpzBqdSLxMpKVNhU",
+        "purpose": "initial_admission"
+      }
+    },
+    "response": {
+      "profile": "bwg-worker-possession/0.2",
+      "requestId": "pos_initial_01",
+      "ok": true,
+      "result": {
+        "claims": {
+          "profile": "bwg-worker-possession-proof/0.2",
+          "possessionNonce": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE",
+          "challengeBindingSha256": "X4zZvQZS4kl8eriGLhoxvxVwcFz5Tx40nnKDBbgLW6k",
+          "controllerCapabilitySha256": "OUAcmoLu-Sjv6nq6fqavz8_3Ev18z7ziNXuEN3FVUrg",
+          "sessionId": "AgICAgICAgICAgICAgICAg",
+          "hostNonce": "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM",
+          "deviceNonce": "BAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ",
+          "serialManifestSha256": "pDwsfWH5X8bHMTqyB0SgAxTKA0_KpzBqdSLxMpKVNhU",
+          "purpose": "initial_admission",
+          "firmwareSourceCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "appElfSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "deviceIdentityJwk": {
+            "kty": "OKP",
+            "crv": "Ed25519",
+            "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+            "alg": "Ed25519",
+            "use": "sig",
+            "key_ops": [
+              "verify"
+            ]
+          }
+        },
+        "compactJws": "eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYndnLXdvcmtlci1wb3NzZXNzaW9uK2p3cyJ9.eyJhcHBFbGZTaGEyNTYiOiJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiIiwiY2hhbGxlbmdlQmluZGluZ1NoYTI1NiI6Ilg0elp2UVpTNGtsOGVyaUdMaG94dnhWd2NGejVUeDQwbm5LREJiZ0xXNmsiLCJjb250cm9sbGVyQ2FwYWJpbGl0eVNoYTI1NiI6Ik9VQWNtb0x1LVNqdjZucTZmcWF2ejhfM0V2MTh6N3ppTlh1RU4zRlZVcmciLCJkZXZpY2VJZGVudGl0eUp3ayI6eyJhbGciOiJFZDI1NTE5IiwiY3J2IjoiRWQyNTUxOSIsImtleV9vcHMiOlsidmVyaWZ5Il0sImt0eSI6Ik9LUCIsInVzZSI6InNpZyIsIngiOiIxMXFZQVlLeENyZlZTXzdUeVdRSE9nN2hjdlBhcGlNbHJ3SWFhUGNIVVJvIn0sImRldmljZU5vbmNlIjoiQkFRRUJBUUVCQVFFQkFRRUJBUUVCQVFFQkFRRUJBUUVCQVFFQkFRRUJBUSIsImZpcm13YXJlU291cmNlQ29tbWl0IjoiYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYSIsImhvc3ROb25jZSI6IkF3TURBd01EQXdNREF3TURBd01EQXdNREF3TURBd01EQXdNREF3TURBd00iLCJwb3NzZXNzaW9uTm9uY2UiOiJBUUVCQVFFQkFRRUJBUUVCQVFFQkFRRUJBUUVCQVFFQkFRRUJBUUVCQVFFIiwicHJvZmlsZSI6ImJ3Zy13b3JrZXItcG9zc2Vzc2lvbi1wcm9vZi8wLjIiLCJwdXJwb3NlIjoiaW5pdGlhbF9hZG1pc3Npb24iLCJzZXJpYWxNYW5pZmVzdFNoYTI1NiI6InBEd3NmV0g1WDhiSE1UcXlCMFNnQXhUS0EwX0twekJxZFNMeE1wS1ZOaFUiLCJzZXNzaW9uSWQiOiJBZ0lDQWdJQ0FnSUNBZ0lDQWdJQ0FnIn0.fardJzatXxQPro7mvRvtA-nKTXH_VeLVXotBWdDpID_iOlLkX7GF7-QdNHX3p7eeb9aoo5quy59f27J7mOSIDw"
+      }
+    }
+  },
+  "reacquisition": {
+    "request": {
+      "profile": "bwg-worker-possession/0.2",
+      "requestId": "pos_reacquire_01",
+      "command": "prove_possession",
+      "payload": {
+        "possessionNonce": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE",
+        "challengeBindingSha256": "X4zZvQZS4kl8eriGLhoxvxVwcFz5Tx40nnKDBbgLW6k",
+        "controllerCapabilitySha256": "OUAcmoLu-Sjv6nq6fqavz8_3Ev18z7ziNXuEN3FVUrg",
+        "sessionId": "AgICAgICAgICAgICAgICAg",
+        "hostNonce": "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM",
+        "deviceNonce": "BAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ",
+        "serialManifestSha256": "pDwsfWH5X8bHMTqyB0SgAxTKA0_KpzBqdSLxMpKVNhU",
+        "purpose": "transport_reacquisition"
+      }
+    },
+    "response": {
+      "profile": "bwg-worker-possession/0.2",
+      "requestId": "pos_reacquire_01",
+      "ok": true,
+      "result": {
+        "claims": {
+          "profile": "bwg-worker-possession-proof/0.2",
+          "possessionNonce": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE",
+          "challengeBindingSha256": "X4zZvQZS4kl8eriGLhoxvxVwcFz5Tx40nnKDBbgLW6k",
+          "controllerCapabilitySha256": "OUAcmoLu-Sjv6nq6fqavz8_3Ev18z7ziNXuEN3FVUrg",
+          "sessionId": "AgICAgICAgICAgICAgICAg",
+          "hostNonce": "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM",
+          "deviceNonce": "BAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ",
+          "serialManifestSha256": "pDwsfWH5X8bHMTqyB0SgAxTKA0_KpzBqdSLxMpKVNhU",
+          "purpose": "transport_reacquisition",
+          "firmwareSourceCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "appElfSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "deviceIdentityJwk": {
+            "kty": "OKP",
+            "crv": "Ed25519",
+            "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+            "alg": "Ed25519",
+            "use": "sig",
+            "key_ops": [
+              "verify"
+            ]
+          }
+        },
+        "compactJws": "eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYndnLXdvcmtlci1wb3NzZXNzaW9uK2p3cyJ9.eyJhcHBFbGZTaGEyNTYiOiJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiIiwiY2hhbGxlbmdlQmluZGluZ1NoYTI1NiI6Ilg0elp2UVpTNGtsOGVyaUdMaG94dnhWd2NGejVUeDQwbm5LREJiZ0xXNmsiLCJjb250cm9sbGVyQ2FwYWJpbGl0eVNoYTI1NiI6Ik9VQWNtb0x1LVNqdjZucTZmcWF2ejhfM0V2MTh6N3ppTlh1RU4zRlZVcmciLCJkZXZpY2VJZGVudGl0eUp3ayI6eyJhbGciOiJFZDI1NTE5IiwiY3J2IjoiRWQyNTUxOSIsImtleV9vcHMiOlsidmVyaWZ5Il0sImt0eSI6Ik9LUCIsInVzZSI6InNpZyIsIngiOiIxMXFZQVlLeENyZlZTXzdUeVdRSE9nN2hjdlBhcGlNbHJ3SWFhUGNIVVJvIn0sImRldmljZU5vbmNlIjoiQkFRRUJBUUVCQVFFQkFRRUJBUUVCQVFFQkFRRUJBUUVCQVFFQkFRRUJBUSIsImZpcm13YXJlU291cmNlQ29tbWl0IjoiYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYSIsImhvc3ROb25jZSI6IkF3TURBd01EQXdNREF3TURBd01EQXdNREF3TURBd01EQXdNREF3TURBd00iLCJwb3NzZXNzaW9uTm9uY2UiOiJBUUVCQVFFQkFRRUJBUUVCQVFFQkFRRUJBUUVCQVFFQkFRRUJBUUVCQVFFIiwicHJvZmlsZSI6ImJ3Zy13b3JrZXItcG9zc2Vzc2lvbi1wcm9vZi8wLjIiLCJwdXJwb3NlIjoidHJhbnNwb3J0X3JlYWNxdWlzaXRpb24iLCJzZXJpYWxNYW5pZmVzdFNoYTI1NiI6InBEd3NmV0g1WDhiSE1UcXlCMFNnQXhUS0EwX0twekJxZFNMeE1wS1ZOaFUiLCJzZXNzaW9uSWQiOiJBZ0lDQWdJQ0FnSUNBZ0lDQWdJQ0FnIn0.zZhWlUrN5EL4gNnVYh-Eay1g-i-M-HNXQy_V0CDpj7mmvgAEf_UY1N5u7RYkoIe8Pon-buCHdYW3WWb61UEmBw"
+      }
+    }
+  },
+  "controlSessionBindingSha256": "jEc1ro90lL2fX0ZozUbY0XpmxrC46gEkEUKKTyGj0Zs",
+  "weakKeyForgery": {
+    "profile": "bwg-worker-possession/0.2",
+    "requestId": "pos_initial_01",
+    "ok": true,
+    "result": {
+      "claims": {
+        "profile": "bwg-worker-possession-proof/0.2",
+        "possessionNonce": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE",
+        "challengeBindingSha256": "X4zZvQZS4kl8eriGLhoxvxVwcFz5Tx40nnKDBbgLW6k",
+        "controllerCapabilitySha256": "CtvT6G8qseRHNbuD5QCpkgeLQXK6RZfJTBqv9XKjm8U",
+        "sessionId": "AgICAgICAgICAgICAgICAg",
+        "hostNonce": "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM",
+        "deviceNonce": "BAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ",
+        "serialManifestSha256": "ff749MMrgnM5q2-PIXvDEZPt3ScoBjbCwOi-XNj1fok",
+        "purpose": "initial_admission",
+        "firmwareSourceCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "appElfSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "deviceIdentityJwk": {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "alg": "Ed25519",
+          "use": "sig",
+          "key_ops": [
+            "verify"
+          ]
+        }
+      },
+      "compactJws": "eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYndnLXdvcmtlci1wb3NzZXNzaW9uK2p3cyJ9.eyJhcHBsaWNhdGlvbkRlc2NyaXB0b3JTaGEyNTYiOiJyT0tPXzd3aFpmeTBudE1LTTlSSWVaTkFBM3g5N3R0M3JXTUFtX1FzaFZBIiwiY2hhbGxlbmdlQmluZGluZ1NoYTI1NiI6IkNDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0MiLCJjb250cm9sbGVyQ2FwYWJpbGl0eVNoYTI1NiI6IkpGV3N5dWVIdlhTOU05R2xEbEs2eUVPd1V6TzhvUFh0bG9hbHlUUnhGdkUiLCJkZXZpY2VJZGVudGl0eUp3ayI6eyJhbGciOiJFZDI1NTE5IiwiY3J2IjoiRWQyNTUxOSIsImtleV9vcHMiOlsidmVyaWZ5Il0sImt0eSI6Ik9LUCIsInVzZSI6InNpZyIsIngiOiJBUUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBIn0sInBvc3Nlc3Npb25Ob25jZSI6IkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkIiLCJwcm9maWxlIjoiYndnLXdvcmtlci1wb3NzZXNzaW9uLXByb29mLzAuMSIsInB1cnBvc2UiOiJpbml0aWFsX2FkbWlzc2lvbiJ9.WGZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmYBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    }
+  },
+  "nonCanonicalWeakKeyForgery": {
+    "profile": "bwg-worker-possession/0.2",
+    "requestId": "pos_initial_01",
+    "ok": true,
+    "result": {
+      "claims": {
+        "profile": "bwg-worker-possession-proof/0.2",
+        "possessionNonce": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE",
+        "challengeBindingSha256": "X4zZvQZS4kl8eriGLhoxvxVwcFz5Tx40nnKDBbgLW6k",
+        "controllerCapabilitySha256": "CtvT6G8qseRHNbuD5QCpkgeLQXK6RZfJTBqv9XKjm8U",
+        "sessionId": "AgICAgICAgICAgICAgICAg",
+        "hostNonce": "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM",
+        "deviceNonce": "BAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ",
+        "serialManifestSha256": "ff749MMrgnM5q2-PIXvDEZPt3ScoBjbCwOi-XNj1fok",
+        "purpose": "initial_admission",
+        "firmwareSourceCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "appElfSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "deviceIdentityJwk": {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "7v_______________________________________38",
+          "alg": "Ed25519",
+          "use": "sig",
+          "key_ops": [
+            "verify"
+          ]
+        }
+      },
+      "compactJws": "eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYndnLXdvcmtlci1wb3NzZXNzaW9uK2p3cyJ9.eyJhcHBsaWNhdGlvbkRlc2NyaXB0b3JTaGEyNTYiOiJyT0tPXzd3aFpmeTBudE1LTTlSSWVaTkFBM3g5N3R0M3JXTUFtX1FzaFZBIiwiY2hhbGxlbmdlQmluZGluZ1NoYTI1NiI6IkNDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0MiLCJjb250cm9sbGVyQ2FwYWJpbGl0eVNoYTI1NiI6IkpGV3N5dWVIdlhTOU05R2xEbEs2eUVPd1V6TzhvUFh0bG9hbHlUUnhGdkUiLCJkZXZpY2VJZGVudGl0eUp3ayI6eyJhbGciOiJFZDI1NTE5IiwiY3J2IjoiRWQyNTUxOSIsImtleV9vcHMiOlsidmVyaWZ5Il0sImt0eSI6Ik9LUCIsInVzZSI6InNpZyIsIngiOiI3dl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fXzM4In0sInBvc3Nlc3Npb25Ob25jZSI6IkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkIiLCJwcm9maWxlIjoiYndnLXdvcmtlci1wb3NzZXNzaW9uLXByb29mLzAuMSIsInB1cnBvc2UiOiJpbml0aWFsX2FkbWlzc2lvbiJ9.WGZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmYBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    }
+  },
+  "invalidSignWeakKeyForgery": {
+    "profile": "bwg-worker-possession/0.2",
+    "requestId": "pos_initial_01",
+    "ok": true,
+    "result": {
+      "claims": {
+        "profile": "bwg-worker-possession-proof/0.2",
+        "possessionNonce": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE",
+        "challengeBindingSha256": "X4zZvQZS4kl8eriGLhoxvxVwcFz5Tx40nnKDBbgLW6k",
+        "controllerCapabilitySha256": "CtvT6G8qseRHNbuD5QCpkgeLQXK6RZfJTBqv9XKjm8U",
+        "sessionId": "AgICAgICAgICAgICAgICAg",
+        "hostNonce": "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM",
+        "deviceNonce": "BAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ",
+        "serialManifestSha256": "ff749MMrgnM5q2-PIXvDEZPt3ScoBjbCwOi-XNj1fok",
+        "purpose": "initial_admission",
+        "firmwareSourceCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "appElfSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "deviceIdentityJwk": {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIA",
+          "alg": "Ed25519",
+          "use": "sig",
+          "key_ops": [
+            "verify"
+          ]
+        }
+      },
+      "compactJws": "eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYndnLXdvcmtlci1wb3NzZXNzaW9uK2p3cyJ9.eyJhcHBsaWNhdGlvbkRlc2NyaXB0b3JTaGEyNTYiOiJyT0tPXzd3aFpmeTBudE1LTTlSSWVaTkFBM3g5N3R0M3JXTUFtX1FzaFZBIiwiY2hhbGxlbmdlQmluZGluZ1NoYTI1NiI6IkNDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0MiLCJjb250cm9sbGVyQ2FwYWJpbGl0eVNoYTI1NiI6IkpGV3N5dWVIdlhTOU05R2xEbEs2eUVPd1V6TzhvUFh0bG9hbHlUUnhGdkUiLCJkZXZpY2VJZGVudGl0eUp3ayI6eyJhbGciOiJFZDI1NTE5IiwiY3J2IjoiRWQyNTUxOSIsImtleV9vcHMiOlsidmVyaWZ5Il0sImt0eSI6Ik9LUCIsInVzZSI6InNpZyIsIngiOiJBUUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUlBIn0sInBvc3Nlc3Npb25Ob25jZSI6IkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkIiLCJwcm9maWxlIjoiYndnLXdvcmtlci1wb3NzZXNzaW9uLXByb29mLzAuMSIsInB1cnBvc2UiOiJpbml0aWFsX2FkbWlzc2lvbiJ9.WGZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmYBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    }
+  },
+  "negativeCases": [
+    {
+      "id": "replayed_response",
+      "operation": "replay",
+      "expectedError": "invalid_proof"
+    },
+    {
+      "id": "changed_nonce",
+      "operation": "changed_nonce",
+      "expectedError": "invalid_proof"
+    },
+    {
+      "id": "changed_purpose",
+      "operation": "changed_purpose",
+      "expectedError": "invalid_proof"
+    },
+    {
+      "id": "changed_challenge_binding",
+      "operation": "changed_challenge_binding",
+      "expectedError": "invalid_proof"
+    },
+    {
+      "id": "changed_capability_digest",
+      "operation": "changed_capability_digest",
+      "expectedError": "invalid_proof"
+    },
+    {
+      "id": "changed_manifest_digest",
+      "operation": "changed_manifest_digest",
+      "expectedError": "invalid_proof"
+    },
+    {
+      "id": "changed_firmware_source_commit",
+      "operation": "changed_firmware_source_commit",
+      "expectedError": "invalid_proof"
+    },
+    {
+      "id": "malformed_firmware_source_commit",
+      "operation": "malformed_firmware_source_commit",
+      "expectedError": "invalid_proof"
+    },
+    {
+      "id": "replacement_identity",
+      "operation": "replacement_identity",
+      "expectedError": "invalid_proof"
+    },
+    {
+      "id": "weak_identity_key",
+      "operation": "weak_identity_key",
+      "expectedError": "invalid_proof"
+    },
+    {
+      "id": "unknown_request_field",
+      "operation": "unknown_request_field",
+      "expectedError": "invalid_request"
+    },
+    {
+      "id": "arbitrary_signing_request",
+      "operation": "arbitrary_signing_request",
+      "expectedError": "invalid_request"
+    },
+    {
+      "id": "oversized_frame",
+      "operation": "oversized_frame",
+      "expectedError": "invalid_frame"
+    }
+  ]
+}

@@ -10,6 +10,9 @@
 #include "stratum_api.h"
 #include "connect.h"
 #include "system.h"
+#include "bwg_revocation.h"
+#include "bwg_mining.h"
+#include "bwg_v2_runtime.h"
 #include <sys/socket.h>
 #include <string.h>
 
@@ -141,7 +144,8 @@ void stratum_task(void *pvParameters)
     }
 
     while (1) {
-        if (GLOBAL_STATE->SYSTEM_MODULE.mining_paused || GLOBAL_STATE->SYSTEM_MODULE.hardware_fault) {
+        if (GLOBAL_STATE->SYSTEM_MODULE.mining_paused || GLOBAL_STATE->SYSTEM_MODULE.hardware_fault || bwg_revocation_stop_wanted() ||
+            bwg_mining_holds_pool(GLOBAL_STATE)) {
             vTaskDelay(1000 / portTICK_PERIOD_MS);
             continue;
         }
@@ -154,7 +158,8 @@ void stratum_task(void *pvParameters)
 
         uint16_t prim_idx = GLOBAL_STATE->SYSTEM_MODULE.primary_pool_index;
         uint16_t sec_idx = GLOBAL_STATE->SYSTEM_MODULE.secondary_pool_index;
-        bool has_fallback = (GLOBAL_STATE->SYSTEM_MODULE.pools[sec_idx].url != NULL &&
+        bool has_fallback = (!bwg_mining_lease_pool_active() &&
+                             GLOBAL_STATE->SYSTEM_MODULE.pools[sec_idx].url != NULL &&
                              GLOBAL_STATE->SYSTEM_MODULE.pools[sec_idx].url[0] != '\0');
 
         int threshold = has_fallback ? 2 : 1;
@@ -204,7 +209,7 @@ void stratum_task(void *pvParameters)
         }
 
         uint16_t active_idx = GLOBAL_STATE->SYSTEM_MODULE.is_using_fallback ? sec_idx : prim_idx;
-        stratum_protocol_t protocol = GLOBAL_STATE->SYSTEM_MODULE.pools[active_idx].protocol;
+        stratum_protocol_t protocol = bwg_mining_pool_or(&GLOBAL_STATE->SYSTEM_MODULE.pools[active_idx])->protocol;
 
         s_running_pool_idx = active_idx;
         s_should_reconnect = false;
@@ -212,6 +217,7 @@ void stratum_task(void *pvParameters)
 
         if (protocol == STRATUM_PROTOCOL_V2) {
             err = stratum_v2_run(GLOBAL_STATE, active_idx);
+            bwg_v2_note_worker_returned();
         } else {
             err = stratum_v1_run(GLOBAL_STATE, active_idx);
         }
@@ -260,6 +266,10 @@ int stratum_submit_share(GlobalState *GLOBAL_STATE, const asic_job_t *active_job
                          uint32_t nonce, uint32_t rolled_version, uint64_t *sent_time_us)
 {
     if (!GLOBAL_STATE || !active_job) {
+        return -1;
+    }
+
+    if (!bwg_revocation_admit_share()) {
         return -1;
     }
 

@@ -20,8 +20,8 @@ CONFIG_SPIRAM_ALLOW_NOINIT_SEG_EXTERNAL_MEMORY=y
 CONFIG_SPIRAM_IGNORE_NOTFOUND=y
 CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
 CONFIG_ESP_WIFI_11KV_SUPPORT=y
-CONFIG_BT_ENABLED=y
-CONFIG_BT_NIMBLE_ENABLED=y
+# BLE stays off until the secured setup design exists; see AGENTS.md.
+CONFIG_BT_ENABLED=n
 # CONFIG_BT_BLUEDROID_ENABLED is not set
 CONFIG_BT_NIMBLE_ROLE_PERIPHERAL=y
 CONFIG_BT_NIMBLE_ROLE_BROADCASTER=y
@@ -48,3 +48,26 @@ CONFIG_MBEDTLS_CHACHAPOLY_C=y
 CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC=y
 CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
 CONFIG_FREERTOS_RUN_TIME_COUNTER_TYPE_U64=y
+
+# The Gate's protocol owns the USB Serial/JTAG channel, so no log output may reach it.
+CONFIG_ESP_CONSOLE_SECONDARY_NONE=y
+# USB-Serial/JTAG runs on the BBPLL, which a CPU or USB-core reset does not reset. Recalibrating it at
+# startup can wedge an active host link until a replug, and IDF says to disable this for bootloaders
+# built with v5.2 or later.
+CONFIG_ESP_SYSTEM_BBPLL_RECALIB=n
+
+# A panic's postmortem stays in on-device flash, for the Gate's self-test and for a real fault. Task stacks are in
+# it, and nothing but the owner's own tools reads it back. Setting CONFIG_ESP_COREDUMP_ENABLE_TO_NONE turns it off.
+CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH=y
+CONFIG_ESP_COREDUMP_DATA_FORMAT_ELF=y
+CONFIG_ESP_COREDUMP_CHECKSUM_SHA256=y
+# Task stacks, registers and the sections chosen for it; no heap walk.
+CONFIG_ESP_COREDUMP_CAPTURE_DRAM=n
+CONFIG_ESP_COREDUMP_MAX_TASKS_NUM=64
+CONFIG_ESP_COREDUMP_STACK_SIZE=4096
+# The first dump stays until it's collected and erased.
+CONFIG_ESP_COREDUMP_FLASH_NO_OVERWRITE=y
+CONFIG_ESP_COREDUMP_CHECK_BOOT=y
+CONFIG_ESP_COREDUMP_LOGS=n
+# All of the app's ELF digest, so a dump can be matched to its image.
+CONFIG_APP_RETRIEVE_LEN_ELF_SHA=64

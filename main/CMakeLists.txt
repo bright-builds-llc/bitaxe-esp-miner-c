@@ -40,6 +40,26 @@ SRCS
     "./http_server/theme_api.c"
     "./http_server/axe-os/api/system/asic_settings.c"
     "./self_test/self_test.c"
+    "./bwg/bwg_boot_guard.c"
+    "./bwg/bwg_cooling.c"
+    "./bwg/bwg_core_dump.c"
+    "./bwg/bwg_evidence.c"
+    "./bwg/bwg_local_guard.c"
+    "./bwg/bwg_gate.c"
+    "./bwg/bwg_gate_budget.c"
+    "./bwg/bwg_gate_ops.c"
+    "./bwg/bwg_link_report.c"
+    "./bwg/bwg_mining.c"
+    "./bwg/bwg_unsafe_detail.c"
+    "./bwg/bwg_owner_watchdog.c"
+    "./bwg/bwg_panic_cutoff.c"
+    "./bwg/bwg_preparation.c"
+    "./bwg/bwg_settings_digest.c"
+    "./bwg/bwg_store.c"
+    "./bwg/bwg_stop.c"
+    "./bwg/bwg_telemetry_cadence.c"
+    "./bwg/bwg_v2_gate.c"
+    "./bwg/bwg_noise_gate.c"
     "./tasks/stratum_task.c"
     "./tasks/stratum_v1_client.c"
     "./tasks/stratum_v2_client.c"
@@ -74,10 +94,12 @@ INCLUDE_DIRS
     "bap"
     "thermal"
     "power"
+    "bwg"
     "${CMAKE_CURRENT_BINARY_DIR}"
 
 REQUIRES
     "asic"
+    "bwg_worker"
     "connect"
     "dns_server"
     "stratum"
@@ -94,6 +116,7 @@ PRIV_REQUIRES
     "esp_http_server"
     "esp_lcd"
     "esp_netif"
+    "esp_partition"
     "esp_psram"
     "esp_timer"
     "esp_wifi"
@@ -103,6 +126,7 @@ PRIV_REQUIRES
     "vfs"
     "esp_driver_i2c"
     "esp_driver_uart"
+    "esp_driver_usb_serial_jtag"
     "tcp_transport"
     "esp_mm"
     "bt"
@@ -111,6 +135,14 @@ EMBED_FILES "http_server/recovery_page.html"
 )
 
 idf_build_set_property(COMPILE_OPTIONS "-DLV_CONF_INCLUDE_SIMPLE=1" APPEND)
+
+# The Gate's fatal path: main/bwg/bwg_panic_cutoff.c and main/bwg/bwg_core_dump.c.
+target_link_libraries(${COMPONENT_LIB} INTERFACE "-Wl,--wrap=esp_panic_handler")
+if(CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH)
+    foreach(symbol esp_core_dump_write_elf esp_core_dump_write_init esp_core_dump_write_prepare esp_core_dump_write_start esp_core_dump_write_end)
+        target_link_libraries(${COMPONENT_LIB} INTERFACE "-Wl,--wrap=${symbol}")
+    endforeach()
+endif()
 idf_build_set_property(COMPILE_OPTIONS "-DLV_CONF_PATH=\"${CMAKE_SOURCE_DIR}/main/lv_conf.h\"" APPEND)
 
 set(WEB_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/http_server/axe-os")
