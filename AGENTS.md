@@ -104,7 +104,7 @@ We use GitHub Actions for automated testing and releases.
 <!-- BEGIN Bright Builds fork section: everything above is upstream's, keep it on merges. -->
 ## Bright Builds Fork
 
-This is `bright-builds-llc/bitaxe-esp-miner-c`: upstream's firmware plus the owner's extensions, chiefly Bitcoin Work Gate interoperability, with as small a difference from upstream as possible. Read `docs/project/c-fork-handoff.md` before any work on the Gate, an upstream fix, a fork-only extension or moving a device. It holds the ordered steps, the protocol summary and the hazards.
+This is `bright-builds-llc/bitaxe-esp-miner-c`: upstream's firmware plus the owner's extensions, chiefly Bitcoin Work Gate interoperability, with as small a difference from upstream as possible. Read `docs/project/c-fork-handoff.md` before any work on the Gate, an upstream fix, a fork-only extension or moving a device. It holds the ordered steps, the protocol summary and the hazards. `TASKS.md` lists open work, deferred items and unexplained results, one line each with a pointer to the detail; update it when one of these starts, ends or changes.
 
 ### Owner Decisions (2026-10-30)
 - **Base:** fork work lands on `master`, on top of upstream's `master` at `bb4fd0c`. This replaces the handoff's recommendation of a separate branch from `v2.15.4`. Pull requests to upstream start from `upstream/master`, so they carry none of the fork's commits.
