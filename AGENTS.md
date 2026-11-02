@@ -128,10 +128,10 @@ This is `bright-builds-llc/bitaxe-esp-miner-c`: upstream's firmware plus the own
   - `components/asic/include/asic_common.h`: carry a result's job slot, so a V2 record can tie a nonce to its dispatch.
   - `components/stratum_v2/sv2_noise.c`, `components/stratum_v2/include/sv2_noise.h`, `components/stratum_v2/test/test_sv2.c`, `components/stratum_v2/test/CMakeLists.txt`: check a certificate's validity window, and let a caller observe a connection and read why it failed, timing a frame from its first byte.
   - `main/tasks/stratum_v2_client.c`: use a V2 lease's pool, refuse work once revoked, and report its frames and timings to the attempt's record.
-  - `main/tasks/stratum_task.c`: refuse shares and stay off the pool once revoked, and use a V2 lease's protocol.
+  - `main/tasks/stratum_task.c`: refuse shares and stay off the pool once revoked, use a V2 lease's protocol, and leave a lease's connection after a failed send.
   - `main/CMakeLists.txt`: build the Gate's sources and wrap the panic and core-dump seams its fatal path uses.
   - `main/tasks/stratum_v1_client.c`: use a lease's pool, and leave the pool once revoked.
-  - `main/tasks/power_management_task.c`: start and report the stop, end a lease on a local stop or overheat with its reading, tick the crash-loop guard, skip chip commands when a guard-paused boot never initialized it, record a lease's preparation, start the proof variant, and pace local restarts by the restart guard (`main/bwg/bwg_local_guard.c`), powering down after a failed start.
+  - `main/tasks/power_management_task.c`: start and report the stop, end a lease on a local stop, lost pools or overheat with its reading, tick the crash-loop guard, skip chip commands when a guard-paused boot never initialized it, record a lease's preparation, start the proof variant, and pace local restarts by the restart guard (`main/bwg/bwg_local_guard.c`), powering down after a failed start.
   - `main/http_server/system_api_json.c`, `main/http_server/openapi.yaml`, `main/http_server/axe-os/src/app/services/system.service.ts`, `main/http_server/axe-os/src/app/components/home/home.component.spec.ts`: report `miningActivity`, `pauseReason` and `mineOnBoot`.
   - `main/tasks/fan_controller_task.c`: hold the fan the stop or the fan qualification asks for, report when it applied, and keep the Gate's readings fresh while the stop has the power task.
   - `main/tasks/create_jobs_task.c`: forget earlier work once revoked.

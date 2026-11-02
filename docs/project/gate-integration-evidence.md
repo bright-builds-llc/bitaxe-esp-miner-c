@@ -1,10 +1,10 @@
 # Gate integration evidence
 
-Evidence for Bitcoin Work Gate parity with the Rust firmware, recorded 2026-11-01. Every claim below is about this one image on this one board, unless a line says otherwise, and none carries over from a Rust image or an earlier image of this tree.
+Evidence for Bitcoin Work Gate parity with the Rust firmware, recorded 2026-11-01. Every claim below is about this one image on this one board, unless a line says otherwise, and none carries over from a Rust image or an earlier image of this tree. The Gamma 601 has its own section and image, and nothing else here covers it.
 
 | | |
 |---|---|
-| Board | Bitaxe 205 (BM1368), 485 MHz, 1200 mV, matched by base-MAC digest before each ROM write |
+| Board | Bitaxe 205 (BM1366), 485 MHz, 1200 mV, matched by base-MAC digest before each ROM write |
 | Source | Uncommitted tree on `a8b57a5`. The image reports that commit, so a build from the commit holding this file reports a different commit and hashes, from the same firmware source |
 | Image | `esp-miner.bin` SHA-256 `f900e43ff1fb2805ffca10a2c7dd8df0264448b8f17e797d18aa5c97bf9766e7` |
 | ELF | SHA-256 `b72acedd3a5ea5eae5dcec4bfc4a71534118c984e0ab0c6a19dcbb684986954b` |
@@ -194,6 +194,84 @@ A test pool that passes the upstream probe and fails every session ran against t
 
 A chip whose replies were cut over JTAG then gave real failed starts: retries came 30, 60, 120 and 241 s apart, and the fifth failure held with `restart_guard` at 494 s. After a reset and a resume, hashing returned in about 10 s. Those retries came from this image, but a lease on the silent chip did not: the test's debugger script ended partway in every try on it, so those runs say nothing either way. A test image of the fixed tree, with one temporary line that cuts the chip's replies and was never committed, gave that lease twice from a paused board. Both were refused with `command_rejected` at 28.9 s, inside the 30 s limit, after 0 chips were detected and the 25 s wait for work ran out, and the board stayed paused with its core voltage off. A lease on a chip silenced from a held `restart_guard` state read the same on the earlier image `981a6404`, at 28.86 s, with the pause and its reason returned.
 
+## Gamma 601
+
+Everything in this section is about this image on this board. None of it carries over to the 205, or from the 205's sections.
+
+| | |
+|---|---|
+| Board | Bitaxe Gamma 601 (BM1370, no enable pin, no board temperature sensor), 425 MHz, 1050 mV, matched by base-MAC digest before its ROM write |
+| Source | `af80095`, clean. The tools below changed after it, and the firmware didn't |
+| Image | `esp-miner.bin` SHA-256 `32156fdc7e3dc6c21ed51eb9da31e42577675ccb574e3dc5abc0d7dccb5f5d6d` |
+| ELF | SHA-256 `9cd2612680956d28fbe9539e1431bffb5eea5162270d9d2186d8a4b7bdbb64ef` |
+| Gate, trust, pool | As above: the same Gate commit, a test authority and a real pool, with the Rust repository's fixture for V2 and Noise |
+
+| Check | Result |
+|---|---|
+| Close probe | 600 rounds, 0 failures, 201 s |
+| The Gate's eight pages, in Chrome | All eight closed with no first failure, each with the same device reason as the 205. Start replies 10.2 to 10.4 s |
+| Harness | `connect`, `start_abort`, `limit_fault`, `replay`, `lease_stop`, `heartbeat_loss`, `reboot`, `operator_pause`, `reviews` and `expiry` completed. The `mining` lease ran 312,302 ms with 30 accepted, 0 rejected, 119 nonces and 15 renewals. Stops took 47,672 and 48,525 ms |
+| Campaign | All three windows ran and passed. `normal`: 178,944 ms active, 16 accepted, 0 rejected, 74 nonces. `foreground`: `link_closed`, closed at 2,739 ms. `heartbeat`: `heartbeat_timeout`, closed at 2,801 ms |
+| `attempt_normal` | Ordinals 1 and 6 passed: 178,991 and 178,048 ms active, 24 and 12 accepted, 0 rejected, 77 and 70 nonces |
+| `attempt_diagnostic` | Ordinal 2 has no verdict: the plan's 50 s wait ended during the stop, and the plan now waits as `attempt_normal` does. Ordinal 9 passed: 2,490 ms active, 1 nonce |
+| `attempt_foreground`, `attempt_heartbeat` | Ordinals 3 and 4 passed. `heartbeat_timeout`, closed at 2,801 and 2,800 ms, stop started at 2,881 and 2,813 ms |
+| `soak` | Passed. Exactly 600,000 ms, 28 renewals, 33 accepted, 0 rejected, 217 nonces, 654 samples, 0 unsafe |
+| `cadence` | Ordinal 5. All three phases passed, longest interval 539,275 µs, longest execution 39,763 µs, 0 send failures, 0 dropped. The supervisor's report here is the cadence's, so the attempt itself has no window verdict |
+| `trace` | Available, 0 dropped |
+| `restart`, `endpoint` | Completed, identity matched |
+| Core dump | Panic reset seen, identity matched. 56,064 bytes, crashed task `bwg owner`, 69 threads. Receipt `{0x50434f32, 0x2, 0x2, 0x0, 0x703, 0x53544631}`: the pins cut are reset alone, as this board has no enable pin, where the 205's receipt also names enable |
+| V2 and Noise | Noise accepted through the harness and the page, a wrong authority rejected as `authority_verified/authentication/wrong_authority`, cancel cancelled, the channel accepted through the harness and the page. Shares are below |
+| Crash-loop guard | Tripped after 3 abnormal resets with `pauseReason` `crash_loop`. A lease from that state started and stopped, a resume mined, and the streak cleared at 196 s |
+| Restart guard | Held at 623 s after 34 connections, then 1 new connection in 150 s. A lease from the hold started and stopped, and the board recovered |
+| Fan stop | Duty 0 ended the lease as `zero_fan`, reason `unsafe_observation`, 1,046 ms after the last safe sample. The stop drove the fan to 100%, and settings were restored |
+
+A stop on this board takes about 48 s by design, within the Gate's bound: about 16 s of tail, then a cooling proof that always waits 30 s, because the chip has no reading once its power is off. The proof also needs the regulator at 95 °C or below and a turning fan, three readings in a row. Three things follow, and each was seen here:
+
+- **Status during a stop:** the Gate gives up on a status after 30 s, and a status in flight during this stop has no reply until it ends, so the session is lost. From its source, Rust's controller also blocks during a stop, for up to 140 s, but Rust wasn't run this way. `gate_host.ts` and `page_run.ts` wait out the stop on this board before asking.
+- **Hello during a handover:** a Hello to a board mining locally has no reply until the handover's stop ends, about 50 s. With the board still mining locally, `completion` and `pause` timed out connecting. Both passed once each run began from a paused boot, connecting on the first attempt.
+- **Final reading:** the board reports no chip temperature at the end of a stop, so `soak` was refused as `terminal_cooling_missing` and Rust's window judge has no rule for it. See the judge non-claim below.
+
+**V2 shares and the Gate's parser.** Of five share attempts, two were accepted: one through the harness and one through the page. The other three stopped with `v2_evidence_invalid` once work was dispatched. Both tools parse a status before keeping it, so no refused record exists to read. The Gate's `web/worker-v2-serial.ts:42` refuses a `coreId` above 111 or a `smallCoreId` above 7, which fits the 205's BM1366 (112 cores, 3 small-core bits). The BM1370 has 128 cores and 4 bits. Across the 601's logs, 249 nonces reached core 127 and small core 15, with 23 above the core limit and 140 above the small-core limit. Across the 205's, none of 3,335 did. The refused harness attempt logged a share at core 48, small core 12, and the two refused page attempts have no such log, so their IDs weren't read. Given an accepted record with only those IDs changed, the parser accepts 111/7 and refuses 112/7, 111/8 and 48/12. The firmware reports the chip's real IDs, and from its source Rust's decoder reports the same ranges, so this isn't a difference from Rust. The limit is in the Gate, and until it changes a share on this board passes only when its IDs happen to fit.
+
+**Starts that can't succeed.** These ended safely, each with the board paused, its core off and a Gate timeout. None of them got a refusal, because a failed Start stops before it replies and this board's stop outlasts the Gate's 30 s limit. The Gate treats a timeout and a refused Start alike.
+
+| Check | Image | Result |
+|---|---|---|
+| Pool that accepts and never answers | Campaign | `serial_failure: timeout` at 30.2 s, after "Lease did not reach work within 25000 ms" |
+| Pool that authorizes and sends no job | Campaign | `serial_failure: timeout` at 30.2 s, with the same log line |
+| Silent chip, twice | Test | `serial_failure: timeout` at 30.3 s each time, where the 205 was refused at 28.9 s. Chip detection failed within about 1 s, and the Start still waited its full 25 s |
+| Failed-start pacing | Test | Retries came 35, 64, 124 and 243 s apart, and the fifth failure held with `restart_guard` at 473 s. The 205's were 34, 64, 124 and 244 s, also holding at 473 s |
+| Lease from that hold | Test | `serial_failure: timeout` at 30.3 s. The board stopped and stayed paused with `restart_guard` |
+
+The test image is this source plus one temporary line that cuts the chip's replies, built and removed in one step and never committed. Its `esp-miner.bin` SHA-256 starts `7145409d060d658a`. It reports the same version string as the campaign image, so only its hash tells them apart. The campaign image went back on afterwards, and a lease on it replied in 10,339 ms and stopped in 47,521 ms.
+
+**Pool faults during a lease.** These ran over V1 against a local test pool, at difficulty 1, with each fault 40 s after the first share. The fix image is this source plus the change under "Fixed by this evidence", built before that change was committed: `esp-miner.bin` SHA-256 `864c9d788161a589cc9b4e8b6b5557a5a6fba6d755814240e7705df35105c355`, ELF `d69f5822709af0119e73ef766b0930085dfae960fd0469f22d433ca62febab71`. It reports the same version string, so only its hash tells it apart.
+
+| Fault | Image | Result |
+|---|---|---|
+| Connection closed once, pool still listening | Campaign | Reconnected within 0.1 s, and the lease ran on: 15 renewals, 3,179 more shares, 0 rejected, stop 47,322 ms |
+| Pool stops reading and sending | Campaign | The lease ran to its end with nothing accepted after the fault. 52 sends each blocked for 5 s, the result task handled 2,267 nonces where a run with no stall handled 3,723, and 11 chip frames were corrupted. Stop 47,623 ms |
+| Connection closed and connections refused, twice | Fix | The lease ended itself within about 8 s, reason `control_failed`, and the board paused. Stop about 47 s |
+| Pool stops reading and sending, twice | Fix | Each failed send left the connection. After 3 more connections the lease ended itself at about 66 and 68 s, reason `control_failed`, and the board paused. Stop about 48 s |
+| Real pool, no fault | Fix | 312,125 ms active, 23 accepted, 0 rejected, stop 49,218 ms |
+| Connection closed and new connections unanswered | Fix | A host probe timed out, and the pool saw no further connection. The lease ended itself within 23 s, reason `control_failed`, and the board paused. Stop 47,565 ms |
+| V2 fixture killed | Fix | The lease ended itself as the fixture died, reason `control_failed`. Stop 48,069 ms |
+| V2 fixture frozen | Fix | The board didn't notice the stall. Sends kept succeeding, and the attempt ended 75 s later on its 17th share, past the record's limit of 16, reason `control_failed`. Stop 48,394 ms |
+
+The Gate's harness lost its session during each of those stops, as a status in flight does on this board. The V2 runs used a private copy of the harness that keeps heartbeats going, since that scenario's own fault is suppressing them, and a private copy of the Gate's parser with the chip limits widened to the BM1370's. A first attempt at the last three faults was void and is left out of the table: the test pool's backlog still answered connections, and the harness died on the parser's limit.
+
+**The same stall off a lease, on upstream's source.** Upstream's `bb4fd0c` (`esp-miner.bin` SHA-256 starts `e85b1ae4127641d8`) and the same source with the lease condition removed from the fix (starts `65c7e39604dca7fa`) ran with no Gate against the same kind of pool, with a healthy second test pool as the fallback, and were watched for 270 s after each fault. Unpatched, a pool that stopped reading and sending kept the board for the whole watch: 50 failed sends, each holding the result task for 5 s, 1,707 nonces, 10 corrupted chip frames, and no contact with the fallback. Patched, the board reached the fallback in 69 and 72 s with 2,971 and 3,041 nonces and no corrupted frames, and went back when the pool recovered. With no fallback it reached upstream's "all pools unreachable" pause in about 65 s and resumed 16 s after the pool recovered. A pool that stopped reading one connection while still sending jobs kept the unpatched board too, with 51 failed sends and 1,713 nonces, while the patched board reconnected in 16 s and handled 3,194. Every failed send in the unpatched runs reported 0 bytes written, so none of them showed a partial line.
+
+Non-claims for this board:
+
+- **Profile:** the board ran the 425 MHz, 1050 mV, manual 100% fan settings already in its NVS, not its stock profile, so nothing here speaks to stock settings or the catalog's top end.
+- **Identity:** NVS held no `bwg_worker` before this image, so its identity is new, and carrying Rust's identity over wasn't exercised on this board.
+- **Overheat flag:** `overheat_mode` was already 1 from an earlier trip and was cleared by hand before flashing. That trip wasn't investigated here.
+- **Judge:** `acceptance_supervisor.ts` shows Rust's window judge the stop's cooling proof as a 45 °C final reading, on this board only, when the stage is `fan_paused` and the reading is null. The judge's other checks, including the stage and the fan, still run, and records on disk are unchanged. This is a substitution for the judge's check, not a temperature measurement. The `soak` check allows the same substitution.
+- **Runs:** the parts that met these tool limits were rerun on the same image with the changed tools. The harness's other scenarios, the Close probe and the guards are from the first run, which used the earlier tools.
+- **Pool faults:** a local test pool and a small receive buffer stand in for a real pool's failure. The connections that time out were dropped by a full backlog on the test host, not by a lost network path. A V2 attempt's record wasn't read after the fixture died, since the session ended with it, so the cause of that stop is inferred from its timing and its reason. A stalled V2 pool never reached a failed send, and an attempt can't: its record's limit of 16 share frames fits in the board's 5,760-byte send buffer however small the pool's buffer is. The fix's failed-send path is unexercised over V2. A pool that answers a new connection and then stalls with no share to send would wait until the lease ends. The fix image's change hasn't been through the whole campaign, and the campaign's results are from the image before it.
+- **Silent chip:** its replies were cut by that line, on a healthy chip. A chip that has really failed may behave differently, and Rust wasn't run against a silent chip or either pool here.
+
 ## Fixed by this evidence
 
 - **Heartbeat stamp:** a heartbeat close could report 2,799 ms, which Rust's share judge would refuse as `v2_fault_device_deadline`. The stamp was taken after the timer restarted, and fixing that wasn't enough: 1 in about 10 still read 2,799 on the rerun, because a close through the link's poll counts from when the link saw the heartbeat. The reported stamp is now that same moment, and every close on this image reads 2,800 or 2,801 ms.
@@ -203,6 +281,8 @@ A chip whose replies were cut over JTAG then gave real failed starts: retries ca
 - **Cooling proof:** the judge refused `attempt_normal` with `terminal_cooling_proof_missing`, because the proof passed on one reading of 45 °C and the sensor's whole degrees flickered back to 46 °C on the next. The proof now wants 3 readings in a row.
 - **Heartbeat reason:** the judge refused `attempt_heartbeat` with `heartbeat_timeout_not_proven`, because the link's poll could see the lost heartbeat before the revocation timer and call it `link_closed`. Both now name it `heartbeat_timeout`, as Rust's deadline check does.
 - **Telemetry priority:** the telemetry loop now runs where the Gate's cadence contract names, which turned all three phases from `passed: false` to `passed: true`.
+- **Stalled pool:** a pool that stopped reading never broke the connection, so each share held the result task for the 5 s send timeout, and the lease hashed on with nothing accepted. A failed send can also leave part of a line on the wire. A lease now leaves the connection after a failed send, as Rust's source does, and runs out of attempts if the pool doesn't recover. Off a lease upstream's behaviour is unchanged.
+- **Reason for lost pools:** a lease that ran out of pools reported `unsafe_observation`, which reads as a safety fault. It now reports `control_failed`, as Rust's source does.
 
 An earlier version of this file said the owner forbade core dumps, that Close matched Rust, and that the telemetry priority should stay at 2. All three were wrong: the first had no source beyond that file, the second hid a bug in this tree, and the third gave up a check the Gate makes.
 
@@ -223,6 +303,7 @@ Not in this image, and required by no Gate path:
 
 By construction, each small and stated so nobody relies on it:
 
+- **Pool retries in a lease:** here 3 attempts come 2 s apart, and a connection that had work clears the count. From its source, Rust waits 5 s between 3 attempts, about 15 s when refused, and its count carries across connections. Rust wasn't run this way. Rust also blocks dispatch as soon as the pool is lost, where this chip keeps hashing the old job until the stop, with its shares refused.
 - **A Start's readiness:** here the board waits for its first work, up to 25 s, and a pool that authorizes and sends no job fails the Start. From its source, Rust reports running once a V1 pool authorizes or a V2 channel opens, without waiting for work, but Rust wasn't run against such a pool. This was kept because first work proves the pool and chip path. The owner hasn't ruled on it.
 - **V2 record times:** the revoked, shutdown and cooled event times are when the owner task noted them. The true times are in the qualification atoms.
 - **Block check:** `is_block` is masked during an attempt, since the fixture's target is easy.
@@ -240,7 +321,7 @@ Local mining policy, where it differs from Rust's:
 
 ## Non-claims
 
-- **Hardware not run:** the Gamma 601 wasn't attached, so nothing here covers it. Its board has no enable pin, so the panic cutoff there can only cut reset. A pulled cable, a power loss, a real overheat, a stalled pool send and a lost pool during a lease were not exercised. USB re-enumeration leaves the chip powered, so it stands in for a pulled cable from the board's side only.
+- **Hardware not run:** a pulled cable, a power loss and a real overheat were not exercised on either board, nor a stalled pool send or a lost pool during a lease on the 205. USB re-enumeration leaves the chip powered, so it stands in for a pulled cable from the board's side only.
 - **Trust:** this image holds a test authority. Calling it reference firmware under the owner's signed capability is the owner's decision.
 - **Judges:** Rust's full operator and install judges bind Rust's source, and nothing C-aware replaces them yet, so `noise_judge.mjs` and `v2_judge.mjs` use only its pure protocol judges and prove less. Rust's share judge predates ADR-0037's amendment, so `v2_judge.mjs` shows it the reported headroom minus the old 15,550 ms reserve.
 - **Restart guard:** its count lives in RAM, so a reboot starts over. Its hashing clock can include time spent cooling after an overheat. After a backoff ends, the next run can wait up to one more probe interval.

@@ -26,9 +26,8 @@ static GlobalState *s_global_state = NULL;
 static volatile bool s_should_reconnect = false;
 static TaskHandle_t s_heartbeat_task_handle = NULL;
 
-void stratum_request_reconnect(void)
+static void shutdown_transport(void)
 {
-    s_should_reconnect = true;
     if (s_global_state) {
         pthread_mutex_lock(&s_global_state->transport_mutex);
         esp_transport_handle_t transport = s_global_state->transport;
@@ -40,6 +39,12 @@ void stratum_request_reconnect(void)
         }
         pthread_mutex_unlock(&s_global_state->transport_mutex);
     }
+}
+
+void stratum_request_reconnect(void)
+{
+    s_should_reconnect = true;
+    shutdown_transport();
 }
 
 bool stratum_reconnect_requested(void)
@@ -293,6 +298,11 @@ int stratum_submit_share(GlobalState *GLOBAL_STATE, const asic_job_t *active_job
     if (ret < 0) {
         ESP_LOGW(TAG, "Failed to submit share to socket (ret: %d, errno %d: %s)", ret, errno, strerror(errno));
         // stratum_task recv loop will detect a broken connection on its next read and handle reconnection
+        // A pool that stops reading never breaks the connection, and each share would hold the result task for the
+        // whole send timeout, so a lease leaves it. A failed send can also leave part of a line on the wire.
+        if (bwg_mining_lease_pool_active()) {
+            shutdown_transport();
+        }
     }
     return ret;
 }

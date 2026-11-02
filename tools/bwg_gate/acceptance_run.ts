@@ -305,7 +305,7 @@ const plans: Record<string, { query: string; run: () => Promise<unknown> }> = {
   campaign_normal: { query: "kind=campaign&window=0", async run() { await beginWindow(); await awaitBaseline(STOP_WINDOW_MS); await finishCampaign(); } },
   campaign_foreground: { query: "kind=campaign&window=1", async run() { await beginWindow(); await awaitNonces(20_000); await step("armForegroundLoss"); await hideTab(); await reviewAfterFault(); await finishCampaign(); } },
   campaign_heartbeat: { query: "kind=campaign&window=2", async run() { await beginWindow(); await awaitNonces(20_000); await step("suppressHeartbeats"); await sleep(FAULT_STOP_MS); await reviewAfterFault(); await finishCampaign(); } },
-  attempt_diagnostic: { query: "kind=attempt&purpose=diagnostic", async run() { await beginWindow(); await awaitBaseline(50_000); await finishAttempt(); } },
+  attempt_diagnostic: { query: "kind=attempt&purpose=diagnostic", async run() { await beginWindow(); await awaitBaseline(STOP_WINDOW_MS); await finishAttempt(); } },
   attempt_normal: { query: "kind=attempt&purpose=normal", async run() { await beginWindow(); await awaitBaseline(STOP_WINDOW_MS); await finishAttempt(); } },
   attempt_foreground: { query: "kind=attempt&purpose=foreground_loss", async run() { await beginWindow(); await awaitNonces(20_000); await step("armForegroundLoss"); await hideTab(); await reviewAfterFault(); await finishAttempt(); } },
   attempt_heartbeat: { query: "kind=attempt&purpose=heartbeat_loss", async run() { await beginWindow(); await awaitNonces(20_000); await step("suppressHeartbeats"); await sleep(FAULT_STOP_MS); await reviewAfterFault(); await finishAttempt(); } },

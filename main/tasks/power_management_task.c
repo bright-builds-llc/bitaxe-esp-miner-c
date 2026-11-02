@@ -189,7 +189,9 @@ void POWER_MANAGEMENT_task(void * pvParameters)
         // User pause, hardware fault, or all pools unreachable
         bool wants_local_stop = sys_module->mining_paused || sys_module->hardware_fault || sys_module->pools_unavailable;
         if (wants_local_stop && lease_was_open) {
-            bwg_revocation_revoke_lease(BWG_STOP_REASON_LOCAL_STOP);
+            // Running out of pools isn't a local decision, and Rust reports it as a control failure too.
+            bool pools_only = !sys_module->mining_paused && !sys_module->hardware_fault;
+            bwg_revocation_revoke_lease(pools_only ? BWG_STOP_REASON_CONTROL_FAILED : BWG_STOP_REASON_LOCAL_STOP);
         }
         bool revoked = bwg_revocation_stop_wanted();
         bool wants_stop = wants_local_stop || revoked;

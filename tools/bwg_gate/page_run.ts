@@ -93,6 +93,10 @@ async function beginLease(duration: number, renewAfter: number, renewals: number
   report("lease_running", { replyMs: Math.round(performance.now() - before) });
 }
 
+// A status sent during a stop has no reply until the stop ends, and the Gate gives up after 30 s. The 601's cooling
+// proof takes 30 s however cool the board is, which carries its stop past that, so these wait before asking.
+const waitOutStop = (windowMs = 0) => process.env.BWG_BOARD === "601" ? sleep(windowMs + 50_000) : Promise.resolve();
+
 async function awaitBaseline(ms: number) {
   const end = performance.now() + ms;
   while (performance.now() < end) {
@@ -145,6 +149,7 @@ const scenarios: Record<string, () => Promise<unknown>> = {
   async expiry() {
     await connect();
     await beginLease(30_000, 10_000, 0);
+    await waitOutStop(30_000);
     report("after_stop", { status: await awaitBaseline(90_000) });
     return step("close");
   },
@@ -152,6 +157,7 @@ const scenarios: Record<string, () => Promise<unknown>> = {
     await connect();
     await beginLease(60_000, 20_000, 1);
     report("stimulus", { ack: await step("triggerClockDiscontinuity") });
+    await waitOutStop();
     report("after_stop", { status: await awaitBaseline(60_000) });
     report("stimulus_review", { review: await step("clockDiscontinuityStimulusReview") });
     report("rejection_review", { review: await step("authorizationRejectionReview") });

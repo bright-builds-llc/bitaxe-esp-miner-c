@@ -179,7 +179,11 @@ async function watch(controller: any, ms: number, until: (status: any) => boolea
   return status;
 }
 
-const v2Root = () => `${process.env.HOME}/.bitaxe-fork-private/205/v2-fixture`;
+const board = process.env.BWG_BOARD ?? "205";
+// A status sent during a stop has no reply until the stop ends, and the Gate gives up after 30 s. The 601's cooling
+// proof takes 30 s however cool the board is, which carries its stop past that, so these wait before asking.
+const waitOutStop = (windowMs = 0) => board === "601" ? sleep(windowMs + 50_000) : Promise.resolve();
+const v2Root = () => `${process.env.HOME}/.bitaxe-fork-private/${board}/v2-fixture`;
 const V2_USER = "fixture-worker";
 const randomAttemptId = () => Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString("base64url");
 
@@ -187,7 +191,7 @@ const randomAttemptId = () => Buffer.from(crypto.getRandomValues(new Uint8Array(
 async function startFixture(fixtureScope: "channel" | "share", attemptId: string) {
   mkdirSync(v2Root(), { recursive: true, mode: 0o700 });
   const root = `${v2Root()}/${Date.now()}-${fixtureScope}`;
-  const peer = readFileSync(`${process.env.HOME}/.bitaxe-fork-private/205/ip.txt`, "utf8").trim();
+  const peer = readFileSync(`${process.env.HOME}/.bitaxe-fork-private/${board}/ip.txt`, "utf8").trim();
   const child = Bun.spawn([options.bridgePython, resolve(import.meta.dir, "v2_fixture.py"), process.env.BWG_V2_FIXTURE!, root, fixtureScope, attemptId, peer, V2_USER],
     { stdin: "ignore", stdout: "pipe", stderr: Bun.file(`${root}.stderr`) });
   process.on("exit", () => child.kill());
@@ -384,7 +388,7 @@ async function noiseAttempt(variant: "plain" | "wrong_authority" | "cancel") {
   hook.noiseDiagnosticPair = { firmwareSourceCommit: options.commit, appElfSha256: options.elf };
   mkdirSync(v2Root(), { recursive: true, mode: 0o700 });
   const root = `${v2Root()}/${Date.now()}-noise-${variant}`;
-  const peer = readFileSync(`${process.env.HOME}/.bitaxe-fork-private/205/ip.txt`, "utf8").trim();
+  const peer = readFileSync(`${process.env.HOME}/.bitaxe-fork-private/${board}/ip.txt`, "utf8").trim();
   const child = Bun.spawn([options.bridgePython, resolve(import.meta.dir, "v2_fixture.py"), process.env.BWG_V2_FIXTURE!, root, "noise", attemptId, peer],
     { stdin: "ignore", stdout: "ignore", stderr: Bun.file(`${root}.stderr`) });
   process.on("exit", () => child.kill());
@@ -526,6 +530,7 @@ const scenarios: Record<string, () => Promise<void>> = {
     const controller = await connect();
     await startLease(controller, `expiry${Date.now()}`, 30_000, 10_000);
     const before = performance.now();
+    await waitOutStop(30_000);
     const status = await watch(controller, 170_000, (value) => value.state === "baseline");
     report("expired", { afterStartMs: Math.round(performance.now() - before), status: publicStatus(status) });
     await controller.close();
@@ -589,6 +594,7 @@ const scenarios: Record<string, () => Promise<void>> = {
     report("boot_review", { review: await controller.bootReview() });
     await startLease(controller, `stimulus${Date.now()}`, 60_000, 20_000);
     report("stimulus_armed", { ack: await controller.clockDiscontinuityStimulus() });
+    await waitOutStop();
     const status = await watch(controller, 60_000, (value) => value.state === "baseline");
     report("after_stimulus", { status: publicStatus(status) });
     report("stimulus_review", { review: await controller.clockDiscontinuityStimulusReview() });

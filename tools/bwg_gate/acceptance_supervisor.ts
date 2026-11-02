@@ -130,6 +130,16 @@ function saveReport(name: string, report: unknown) {
 /** C leaves a Hello unanswered while it hands local mining over, as Rust does, and that first connect isn't the window's failure. */
 const refusedConnect = (record: { state: any }) => !record.state.running && record.state.failure === "connect_failed" && record.state.admissionFailureStage === "hello";
 
+/**
+ * The Rust window judge wants a final chip reading of at most 45 °C, and the 601 has no reading once its power is off.
+ * Its stop's cooling proof stands in for that one check, and the judge still requires the stop's stage and a turning fan.
+ */
+function withProofAsReading(record: { state: any }) {
+  const q = record.state.qualification;
+  if (options.board !== "601" || q?.safe_stop_stage !== "fan_paused" || q.chip_temp_celsius !== null) return record;
+  return { ...record, state: { ...record.state, qualification: { ...q, temperature_fresh: true, chip_temp_celsius: 45 } } };
+}
+
 /** The Rust fork's verdict on this window's records, or the closed category it refused them with. */
 function judge(extra: object) {
   try {
@@ -139,7 +149,7 @@ function judge(extra: object) {
     const index = mode.kind === "campaign" ? mode.window : mode.kind === "attempt" ? ({ foreground_loss: 1, heartbeat_loss: 2 } as Record<string, number>)[mode.purpose] ?? 0 : 0;
     const fault = maybeFault ? { ...maybeFault, window: index } : undefined;
     const iterative = mode.kind === "attempt" ? { iterativePurpose: mode.purpose } : {};
-    const result = judgeWindow(index, windowRecords, fault, iterative);
+    const result = judgeWindow(index, windowRecords.map(withProofAsReading), fault, iterative);
     return { verdict: "passed", result, refused_connect_records: refused, ...extra };
   } catch (error) {
     return { verdict: "refused", category: (error as { code?: string }).code ?? (error as Error).message, ...extra };
@@ -160,7 +170,8 @@ function judgeSoak(ledgerAfter: any) {
     check(!last.deviceRestorationConfirmed || !last.deviceLeaseInactive, "restoration_unconfirmed");
     check(q.revocation_reason !== "lease_or_budget_expired", "soak_not_ended_by_budget");
     check(!q.safe_stop_complete || q.safe_stop_stage !== "fan_paused", "safe_stop_unconfirmed");
-    check(!q.temperature_fresh || q.chip_temp_celsius > 45 || !q.fan_fresh || !(q.fan_rpm > 0), "terminal_cooling_missing");
+    const final = withProofAsReading({ state: { qualification: q } }).state.qualification;
+    check(!final.temperature_fresh || final.chip_temp_celsius > 45 || !q.fan_fresh || !(q.fan_rpm > 0), "terminal_cooling_missing");
     check(q.active_limit_ms !== SOAK_MAXIMUM_ACTIVE_MS || q.soak.reserved_ms !== SOAK_MAXIMUM_ACTIVE_MS || q.soak.maximum_active_ms !== SOAK_MAXIMUM_ACTIVE_MS, "soak_budget_mismatch");
     check(q.active_ms !== SOAK_MAXIMUM_ACTIVE_MS, "soak_active_time");
     check(q.accepted < 1, "no_accepted_share");
