@@ -202,7 +202,9 @@ bool bwg_mining_start(const bwg_lease_pool_t *pool, uint32_t duration_ms, uint32
         bwg_owner_watchdog_feed();
         vTaskDelay(pdMS_TO_TICKS(WAIT_POLL_MS));
     }
-    ESP_LOGW(TAG, "Lease did not reach work within %d ms", START_WAIT_MS);
+    ESP_LOGW(TAG, "Lease did not reach work within %d ms: chip ready %d, work received %d, sample age %llu ms", START_WAIT_MS,
+             GLOBAL_STATE->ASIC_initalized ? 1 : 0, system->work_received > 0 ? 1 : 0,
+             (unsigned long long)(now_ms() - atomic_load(&s_latest_sample_ms)));
     bwg_preparation_failed(BWG_PREP_STEP_READY, BWG_PREP_FAILURE_REPLY_TIMEOUT);
     return false;
 }
