@@ -4,7 +4,6 @@ The fork's list of open work, one line per item: its state, what unblocks it, an
 
 ## Waiting on the owner
 
-- `task-gate-bm1370-chip-ids`: the Gate's V2 parser refuses `coreId` above 111 and `smallCoreId` above 7, and most of the 601's V2 share attempts stop with `v2_evidence_invalid`. The fix belongs in the Gate repository. See "Gamma 601" in `docs/project/gate-integration-evidence.md`.
 - `task-core-dump-exposure`: decide whether dumps may stay in on-device flash, since their task stacks may hold pool credentials. See "Non-claims" in `docs/project/gate-integration-evidence.md`.
 - `task-reference-firmware`: decide whether to call an image reference firmware under the owner's signed capability. Images hold a test authority until then. See "Non-claims" in `docs/project/gate-integration-evidence.md`.
 - `task-start-readiness`: rule on a Start waiting for first work, up to 25 s, where Rust's source reports running once a pool authorizes. See "Differences from Rust" in `docs/project/gate-integration-evidence.md`.
