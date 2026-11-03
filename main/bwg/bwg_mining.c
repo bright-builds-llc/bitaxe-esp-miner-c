@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "bwg_limits.h"
+#include "bwg_mining_rules.h"
 #include "bwg_owner_watchdog.h"
 #include "bwg_preparation.h"
 #include "bwg_stop.h"
@@ -300,28 +301,33 @@ void bwg_mining_check_limits(GlobalState *GLOBAL_STATE)
         return;
     }
     bwg_mining_latch_shares(GLOBAL_STATE);
-    if (!GLOBAL_STATE->ASIC_initalized) {
-        // Still starting: readings mean nothing yet, and the Start reply has its own limit.
+    bwg_board_limits_t limits;
+    const bool limits_known = bwg_board_limits_for(GLOBAL_STATE->DEVICE_CONFIG.board_version,
+                                                   GLOBAL_STATE->DEVICE_CONFIG.power_consumption_target, &limits);
+    const bwg_lease_watch_facts_t facts = {
+        .chip_ready = GLOBAL_STATE->ASIC_initalized,
+        .settings_admissible = settings_admissible(GLOBAL_STATE),
+        .limits_known = limits_known,
+        .sample_safe = limits_known && bwg_limits_sample_safe(&limits, &sample),
+        .since_safe_ms = now - s_last_safe_ms,
+    };
+    switch (bwg_lease_watch(&facts)) {
+    case BWG_LEASE_WATCH_STARTING:
+        // The Start reply has its own limit.
+    case BWG_LEASE_WATCH_SAFE:
         s_last_safe_ms = now;
         return;
-    }
-    if (!settings_admissible(GLOBAL_STATE)) {
+    case BWG_LEASE_WATCH_UNSAFE_SETTINGS:
         bwg_revocation_revoke_lease(BWG_STOP_REASON_UNSAFE_OBSERVATION);
         return;
-    }
-    bwg_board_limits_t limits;
-    if (!bwg_board_limits_for(GLOBAL_STATE->DEVICE_CONFIG.board_version,
-                              GLOBAL_STATE->DEVICE_CONFIG.power_consumption_target, &limits)) {
-        return;
-    }
-    if (bwg_limits_sample_safe(&limits, &sample)) {
-        s_last_safe_ms = now;
-        return;
-    }
-    if (now - s_last_safe_ms >= BWG_SAFE_SAMPLE_MAX_AGE_MS) {
+    case BWG_LEASE_WATCH_UNSAFE_TOO_LONG:
         ESP_LOGW(TAG, "No safe sample for %d ms", BWG_SAFE_SAMPLE_MAX_AGE_MS);
         bwg_revocation_revoke_lease(BWG_STOP_REASON_UNSAFE_OBSERVATION);
-        bwg_unsafe_detail_note_sample(&sample, bwg_limits_first_unsafe_fact(&limits, &sample), (uint32_t)(now - s_last_safe_ms));
+        bwg_unsafe_detail_note_sample(&sample, bwg_limits_first_unsafe_fact(&limits, &sample), (uint32_t)facts.since_safe_ms);
+        return;
+    case BWG_LEASE_WATCH_NO_LIMITS:
+    case BWG_LEASE_WATCH_UNSAFE_FOR_NOW:
+        return;
     }
 }
 
@@ -333,7 +339,7 @@ void bwg_mining_end_lease_on_overheat(bool chip, float celsius)
 
 static void add_session_growth(_Atomic uint32_t *total, uint32_t *seen, uint32_t session)
 {
-    atomic_fetch_add(total, session >= *seen ? session - *seen : session);
+    atomic_fetch_add(total, bwg_session_growth(*seen, session));
     *seen = session;
 }
 
@@ -360,7 +366,7 @@ bool bwg_mining_latest_sample(bwg_safety_sample_t *sample, uint64_t *age_ms)
     return true;
 }
 
-const char *bwg_mining_pause_reason(const GlobalState *GLOBAL_STATE)
+const char *bwg_mining_maybe_pause_reason(const GlobalState *GLOBAL_STATE)
 {
     if (GLOBAL_STATE->SYSTEM_MODULE.overheat_mode) {
         return "overheat";
@@ -375,15 +381,16 @@ const char *bwg_mining_activity(const GlobalState *GLOBAL_STATE)
 {
     const SystemModule *system = &GLOBAL_STATE->SYSTEM_MODULE;
     const bwg_revocation_snapshot_t snapshot = bwg_revocation_snapshot();
-    if (bwg_revocation_stop_wanted() && snapshot.state != BWG_AUTHORITY_STOPPED) {
-        return "stopping";
-    }
-    if (system->hardware_fault || system->overheat_mode || system->pools_unavailable || bwg_local_guard_backing_off()) {
-        return "safe_blocked";
-    }
-    // A lease mines from a paused board, and the pause only returns once the lease ends.
-    if (snapshot.state == BWG_AUTHORITY_LEASED && snapshot.first_work_ms != 0) {
-        return "active";
-    }
-    return bwg_mining_operator_paused(GLOBAL_STATE) || snapshot.state == BWG_AUTHORITY_STOPPED ? "paused" : "active";
+    const bwg_activity_facts_t facts = {
+        .stop_wanted = bwg_revocation_stop_wanted(),
+        .stopped = snapshot.state == BWG_AUTHORITY_STOPPED,
+        .leased = snapshot.state == BWG_AUTHORITY_LEASED,
+        .lease_has_work = snapshot.first_work_ms != 0,
+        .hardware_fault = system->hardware_fault,
+        .overheat = system->overheat_mode,
+        .pools_unavailable = system->pools_unavailable,
+        .backing_off = bwg_local_guard_backing_off(),
+        .operator_paused = bwg_mining_operator_paused(GLOBAL_STATE),
+    };
+    return bwg_activity_name(bwg_activity_of(&facts));
 }

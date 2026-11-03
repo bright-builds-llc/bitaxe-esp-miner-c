@@ -50,8 +50,8 @@ static void fixture_trust_parses_to_its_lease_half(void)
     ASSERT_STREQ(trust.issuer, "development-worker-lease-authority");
     ASSERT_EQ(trust.key_count, 1);
     ASSERT_STREQ(trust.keys[0].kid, "fixture-serial-lease");
-    ASSERT_TRUE(bwg_trust_find_key(&trust, "fixture-serial-lease", 20) == &trust.keys[0]);
-    ASSERT_TRUE(bwg_trust_find_key(&trust, "fixture-serial-update", 21) == NULL);
+    ASSERT_TRUE(bwg_trust_maybe_find_key(&trust, "fixture-serial-lease", 20) == &trust.keys[0]);
+    ASSERT_TRUE(bwg_trust_maybe_find_key(&trust, "fixture-serial-update", 21) == NULL);
 }
 
 static void every_lease_half_vector_parses(void)

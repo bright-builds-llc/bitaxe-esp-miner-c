@@ -122,14 +122,18 @@ bwg_store_result_t bwg_store_high_water_compare_and_store(const bwg_allocator_t 
     bwg_store_result_t result = BWG_STORE_ERROR;
     bwg_seq_doc_t doc;
     if (sequences_read(allocator, handle, &doc)) {
-        uint64_t current = 0;
-        const bool present = bwg_seq_doc_get(&doc, kid, &current);
-        if (present && current == next) {
+        switch (bwg_seq_doc_judge(&doc, kid, has_expected, expected, next)) {
+        case BWG_SEQ_ALREADY_COMMITTED:
             result = BWG_STORE_ALREADY_COMMITTED;
-        } else if (present != has_expected || (present && current != expected)) {
+            break;
+        case BWG_SEQ_STALE:
             result = BWG_STORE_STALE;
-        } else if (bwg_seq_doc_put(&doc, kid, next) && sequences_write(allocator, handle, &doc)) {
-            result = BWG_STORE_COMMITTED;
+            break;
+        case BWG_SEQ_WRITE:
+            if (bwg_seq_doc_put(&doc, kid, next) && sequences_write(allocator, handle, &doc)) {
+                result = BWG_STORE_COMMITTED;
+            }
+            break;
         }
     }
     nvs_close(handle);

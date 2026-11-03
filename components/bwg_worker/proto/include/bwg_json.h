@@ -62,7 +62,7 @@ bool bwg_json_get_u64(yyjson_val *value, uint64_t *out);
 bool bwg_json_get_str(yyjson_val *value, bwg_str_t *out);
 
 /** Field lookup by decoded key. Returns NULL when absent. */
-yyjson_val *bwg_json_field(yyjson_val *object, const char *key);
+yyjson_val *bwg_json_maybe_field(yyjson_val *object, const char *key);
 
 /** Whether the counted string equals the NUL-terminated `literal` exactly. */
 bool bwg_str_equals(bwg_str_t text, const char *literal);

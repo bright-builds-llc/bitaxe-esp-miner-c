@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-type Options = { gate: string; authority: string; trust: string; pool: string; port: string; bridgePython: string; commit: string; elf: string; scenario: string; deviceIp: string };
+type Options = { gate: string; authority: string; trust: string; pool: string; port: string; bridgePython: string; commit: string; elf: string; scenario: string; deviceIp?: string };
 
 function parseOptions(args: string[]): Options {
   const options: Record<string, string> = {};
@@ -26,16 +26,19 @@ const started = performance.now();
 const elapsed = () => Math.round(performance.now() - started);
 const report = (event: string, detail: unknown = {}) => console.log(JSON.stringify({ t: elapsed(), event, ...(detail as object) }));
 const sleep = (ms: number) => new Promise((done) => setTimeout(done, ms));
+/** Only the scenarios that reach the board over HTTP need `--deviceIp`. */
+const deviceUrl = (path: string) => { if (!options.deviceIp) throw new Error("missing_option_deviceIp"); return `http://${options.deviceIp}${path}`; };
 
 function bridgedPort() {
-  let bridge: ReturnType<typeof Bun.spawn> | undefined;
+  let maybeBridge: ReturnType<typeof Bun.spawn> | undefined;
   const port: any = {
     readable: null,
     writable: null,
     connected: true,
     getInfo: () => ({ usbVendorId: 0x303a, usbProductId: 0x1001 }),
     async open() {
-      bridge = Bun.spawn([options.bridgePython, resolve(import.meta.dir, "serial_bridge.py"), options.port], { stdin: "pipe", stdout: "pipe", stderr: "ignore" });
+      const bridge = Bun.spawn([options.bridgePython, resolve(import.meta.dir, "serial_bridge.py"), options.port], { stdin: "pipe", stdout: "pipe", stderr: "ignore" });
+      maybeBridge = bridge;
       const output = (bridge.stdout as ReadableStream<Uint8Array>).getReader();
       // Cancelling a process's own stdout doesn't settle, which the Gate's 1 s close bound would fail.
       port.readable = new ReadableStream<Uint8Array>({
@@ -44,7 +47,7 @@ function bridgedPort() {
           if (done) controller.close();
           else controller.enqueue(value);
         },
-        cancel() { bridge?.kill(); },
+        cancel() { bridge.kill(); },
       });
       const sink = bridge.stdin as any;
       port.writable = new WritableStream<Uint8Array>({
@@ -55,8 +58,8 @@ function bridgedPort() {
     },
     async close() {
       const closing = performance.now();
-      bridge?.kill();
-      await bridge?.exited;
+      maybeBridge?.kill();
+      await maybeBridge?.exited;
       report("bridge_closed", { ms: Math.round(performance.now() - closing) });
       port.readable = null;
       port.writable = null;
@@ -192,7 +195,7 @@ async function startFixture(fixtureScope: "channel" | "share", attemptId: string
   mkdirSync(v2Root(), { recursive: true, mode: 0o700 });
   const root = `${v2Root()}/${Date.now()}-${fixtureScope}`;
   const peer = readFileSync(`${process.env.HOME}/.bitaxe-fork-private/${board}/ip.txt`, "utf8").trim();
-  const child = Bun.spawn([options.bridgePython, resolve(import.meta.dir, "v2_fixture.py"), process.env.BWG_V2_FIXTURE!, root, fixtureScope, attemptId, peer, V2_USER],
+  const child = Bun.spawn([process.execPath, resolve(import.meta.dir, "v2_fixture.ts"), process.env.BWG_V2_FIXTURE!, root, fixtureScope, attemptId, peer, V2_USER],
     { stdin: "ignore", stdout: "pipe", stderr: Bun.file(`${root}.stderr`) });
   process.on("exit", () => child.kill());
   const reader = (child.stdout as ReadableStream<Uint8Array>).getReader();
@@ -358,8 +361,8 @@ async function followShare(root: string, attemptId: string, onStart = () => {}) 
   throw new Error("share_never_finished");
 }
 
-function keepSafety(root: string, status: unknown, observedAtUs: number | null) {
-  appendFileSync(`${root}.safety.jsonl`, `${JSON.stringify({ atHostMs: Date.now(), observedAtUs, status })}\n`, { mode: 0o600 });
+function keepSafety(root: string, status: unknown, maybeObservedAtUs: number | null) {
+  appendFileSync(`${root}.safety.jsonl`, `${JSON.stringify({ atHostMs: Date.now(), observedAtUs: maybeObservedAtUs, status })}\n`, { mode: 0o600 });
 }
 
 /** One attempt's statuses as the device reported them, private for their addresses, and a summary free of them. */
@@ -389,7 +392,7 @@ async function noiseAttempt(variant: "plain" | "wrong_authority" | "cancel") {
   mkdirSync(v2Root(), { recursive: true, mode: 0o700 });
   const root = `${v2Root()}/${Date.now()}-noise-${variant}`;
   const peer = readFileSync(`${process.env.HOME}/.bitaxe-fork-private/${board}/ip.txt`, "utf8").trim();
-  const child = Bun.spawn([options.bridgePython, resolve(import.meta.dir, "v2_fixture.py"), process.env.BWG_V2_FIXTURE!, root, "noise", attemptId, peer],
+  const child = Bun.spawn([process.execPath, resolve(import.meta.dir, "v2_fixture.ts"), process.env.BWG_V2_FIXTURE!, root, "noise", attemptId, peer],
     { stdin: "ignore", stdout: "ignore", stderr: Bun.file(`${root}.stderr`) });
   process.on("exit", () => child.kill());
   const ready = await waitForFile(`${root}/ready.json`);
@@ -475,7 +478,7 @@ const scenarios: Record<string, () => Promise<void>> = {
     const controller = await connect();
     await startLease(controller, `reboot${Date.now()}`, 60_000, 20_000);
     await watch(controller, 5_000);
-    report("restart_requested", { http: (await fetch(`http://${options.deviceIp}/api/system/restart`, { method: "POST" })).status });
+    report("restart_requested", { http: (await fetch(deviceUrl("/api/system/restart"), { method: "POST" })).status });
     await controller.close().catch((error: Error) => report("close_failed", { category: error.message }));
     await sleep(25_000);
     const next = await connect();
@@ -487,7 +490,7 @@ const scenarios: Record<string, () => Promise<void>> = {
     const controller = await connect();
     await startLease(controller, `pause${Date.now()}`, 60_000, 20_000);
     await watch(controller, 5_000);
-    report("pause_requested", { http: (await fetch(`http://${options.deviceIp}/api/system/pause`, { method: "POST" })).status });
+    report("pause_requested", { http: (await fetch(deviceUrl("/api/system/pause"), { method: "POST" })).status });
     await sleep(3_000);
     await controller.status().then((status: any) => report("status_after_pause", { status: publicStatus(status) })).catch((error: Error) => report("status_failed", { category: error.message }));
     await controller.close().catch((error: Error) => report("close_failed", { category: error.message }));
@@ -502,9 +505,9 @@ const scenarios: Record<string, () => Promise<void>> = {
     report("lease_while_paused_stopped", { status: publicStatus(stopped) });
     await next.close().catch((error: Error) => report("close_failed", { category: error.message }));
     await sleep(20_000);
-    const info: any = await (await fetch(`http://${options.deviceIp}/api/system/info`)).json();
+    const info: any = await (await fetch(deviceUrl("/api/system/info"))).json();
     report("pause_returned", { miningPaused: info.miningPaused });
-    report("resume_requested", { http: (await fetch(`http://${options.deviceIp}/api/system/resume`, { method: "POST" })).status });
+    report("resume_requested", { http: (await fetch(deviceUrl("/api/system/resume"), { method: "POST" })).status });
   },
   // The same signed Start twice: the second must fail on the device's high water, and it revokes the session.
   async replay() {
@@ -574,8 +577,8 @@ const scenarios: Record<string, () => Promise<void>> = {
     const controller = await connect();
     await startLease(controller, `limit${Date.now()}`, 60_000, 20_000);
     await watch(controller, 5_000);
-    const settings = await (await fetch(`http://${options.deviceIp}/api/system/info`)).json();
-    const patch = (frequency: number) => fetch(`http://${options.deviceIp}/api/system`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ frequency }) });
+    const settings = await (await fetch(deviceUrl("/api/system/info"))).json();
+    const patch = (frequency: number) => fetch(deviceUrl("/api/system"), { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ frequency }) });
     report("limit_broken", { http: (await patch(300)).status });
     await sleep(2_000);
     const stopped = await controller.status().then(publicStatus, (error: Error) => ({ failed: error.message }));

@@ -97,7 +97,7 @@ static bwg_ctrl_error_t prepare_start(bwg_controller_t *controller, const bwg_ct
     if (request->maybe_payload == NULL || !bwg_lease_grant_parse(request->maybe_payload, &grant)) {
         return BWG_CTRL_INVALID_REQUEST;
     }
-    const char *maybe_binding = bwg_ctrl_start_context(controller, now_ms);
+    const char *maybe_binding = bwg_ctrl_maybe_start_context(controller, now_ms);
     if (maybe_binding == NULL) {
         bwg_ctrl_note_context_rejection(controller, BWG_AUTH_OPERATION_START);
         return BWG_CTRL_ADMISSION_REQUIRED;
@@ -154,7 +154,7 @@ static bwg_ctrl_error_t prepare_renew(bwg_controller_t *controller, const bwg_ct
     if (request->maybe_payload == NULL || !bwg_lease_renewal_parse(request->maybe_payload, &renewal)) {
         return BWG_CTRL_INVALID_REQUEST;
     }
-    const char *maybe_binding = bwg_ctrl_active_context(controller);
+    const char *maybe_binding = bwg_ctrl_maybe_active_context(controller);
     if (maybe_binding == NULL) {
         bwg_ctrl_note_context_rejection(controller, BWG_AUTH_OPERATION_RENEW);
         return BWG_CTRL_ADMISSION_REQUIRED;
@@ -214,7 +214,7 @@ static bwg_ctrl_error_t prepare_restore(bwg_controller_t *controller, const bwg_
     bwg_str_t text;
     bwg_reason_t reason;
     if (!bwg_json_has_exact_fields(request->maybe_payload, REQUIRED, 1, NULL, 0) ||
-        !bwg_json_get_str(bwg_json_field(request->maybe_payload, "reason"), &text) ||
+        !bwg_json_get_str(bwg_json_maybe_field(request->maybe_payload, "reason"), &text) ||
         !bwg_reason_parse(text.ptr, text.len, &reason)) {
         return BWG_CTRL_INVALID_REQUEST;
     }
@@ -264,11 +264,11 @@ static bwg_ctrl_error_t prepare_probe(bwg_controller_t *controller, const bwg_ct
     bwg_str_t padding;
     uint64_t wanted;
     if (!bwg_json_has_exact_fields(request->maybe_payload, REQUIRED, 2, NULL, 0) ||
-        !bwg_json_get_str(bwg_json_field(request->maybe_payload, "padding"), &padding) ||
-        !bwg_json_get_u64(bwg_json_field(request->maybe_payload, "responsePaddingBytes"), &wanted)) {
+        !bwg_json_get_str(bwg_json_maybe_field(request->maybe_payload, "padding"), &padding) ||
+        !bwg_json_get_u64(bwg_json_maybe_field(request->maybe_payload, "responsePaddingBytes"), &wanted)) {
         return BWG_CTRL_INVALID_REQUEST;
     }
-    if (bwg_ctrl_start_context(controller, now_ms) == NULL) {
+    if (bwg_ctrl_maybe_start_context(controller, now_ms) == NULL) {
         return BWG_CTRL_ADMISSION_REQUIRED;
     }
     if (controller->has_active || controller->cleanup_required) {

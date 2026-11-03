@@ -47,10 +47,10 @@ bwg_ctrl_error_t bwg_ctrl_safe_stop(bwg_controller_t *controller, bwg_reason_t r
 bwg_ctrl_error_t bwg_ctrl_acknowledge_boot(bwg_controller_t *controller);
 
 /** The binding of an admission under 60,000 ms old, or NULL. */
-const char *bwg_ctrl_start_context(const bwg_controller_t *controller, uint64_t now_ms);
+const char *bwg_ctrl_maybe_start_context(const bwg_controller_t *controller, uint64_t now_ms);
 
 /** The binding of the current admission of any age, or NULL. */
-const char *bwg_ctrl_active_context(const bwg_controller_t *controller);
+const char *bwg_ctrl_maybe_active_context(const bwg_controller_t *controller);
 
 /** Runs the injected verifier, or the deployment-trust check, and notes a rejection in the log. */
 bwg_auth_result_t bwg_ctrl_verify_start(bwg_controller_t *controller, const bwg_lease_grant_t *grant,

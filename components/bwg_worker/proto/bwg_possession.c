@@ -42,12 +42,12 @@ static bool has_identifier_shape(bwg_str_t value, const char *prefix)
 
 static bool digest_field(yyjson_val *payload, const char *key, bwg_str_t *out)
 {
-    return bwg_json_get_str(bwg_json_field(payload, key), out) && bwg_digest_text_is_valid(out->ptr, out->len);
+    return bwg_json_get_str(bwg_json_maybe_field(payload, key), out) && bwg_digest_text_is_valid(out->ptr, out->len);
 }
 
 static bool nonce_field(yyjson_val *payload, const char *key, size_t bytes, bwg_str_t *out)
 {
-    return bwg_json_get_str(bwg_json_field(payload, key), out) && bwg_b64url_is_canonical(out->ptr, out->len, bytes);
+    return bwg_json_get_str(bwg_json_maybe_field(payload, key), out) && bwg_b64url_is_canonical(out->ptr, out->len, bytes);
 }
 
 bool bwg_possession_parse_request(yyjson_val *root, bwg_possession_request_t *request)
@@ -60,15 +60,15 @@ bool bwg_possession_parse_request(yyjson_val *root, bwg_possession_request_t *re
     if (!bwg_json_has_exact_fields(root, top, 4, NULL, 0)) {
         return false;
     }
-    yyjson_val *payload = bwg_json_field(root, "payload");
+    yyjson_val *payload = bwg_json_maybe_field(root, "payload");
     bwg_str_t profile;
     bwg_str_t command;
     return bwg_json_has_exact_fields(payload, fields, 8, NULL, 0) &&
-           bwg_json_get_str(bwg_json_field(root, "profile"), &profile) && bwg_str_equals(profile, POSSESSION_PROFILE) &&
-           bwg_json_get_str(bwg_json_field(root, "command"), &command) && bwg_str_equals(command, "prove_possession") &&
-           bwg_json_get_str(bwg_json_field(root, "requestId"), &request->request_id) &&
+           bwg_json_get_str(bwg_json_maybe_field(root, "profile"), &profile) && bwg_str_equals(profile, POSSESSION_PROFILE) &&
+           bwg_json_get_str(bwg_json_maybe_field(root, "command"), &command) && bwg_str_equals(command, "prove_possession") &&
+           bwg_json_get_str(bwg_json_maybe_field(root, "requestId"), &request->request_id) &&
            has_identifier_shape(request->request_id, "pos_") &&
-           bwg_json_get_str(bwg_json_field(payload, "purpose"), &request->purpose) &&
+           bwg_json_get_str(bwg_json_maybe_field(payload, "purpose"), &request->purpose) &&
            (bwg_str_equals(request->purpose, "initial_admission") ||
             bwg_str_equals(request->purpose, "transport_reacquisition")) &&
            digest_field(payload, "possessionNonce", &request->possession_nonce) &&

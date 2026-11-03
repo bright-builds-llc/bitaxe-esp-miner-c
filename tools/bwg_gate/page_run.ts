@@ -34,8 +34,8 @@ const SHIM = `(() => {
 
 const args = process.argv.slice(2);
 const shim = args.includes("--shim");
-const deviceIp = args[args.indexOf("--device-ip") + 1]!;
-const dropCommand = args.includes("--drop-command") ? args[args.indexOf("--drop-command") + 1]! : undefined;
+const maybeDeviceIp = args.includes("--device-ip") ? args[args.indexOf("--device-ip") + 1] : undefined;
+const maybeDropCommand = args.includes("--drop-command") ? args[args.indexOf("--drop-command") + 1] : undefined;
 const wanted = args.filter((value, index) => !value.startsWith("--") && args[index - 1] !== "--device-ip" && args[index - 1] !== "--drop-command");
 
 const started = performance.now();
@@ -111,8 +111,8 @@ async function awaitBaseline(ms: number) {
 // board sees what a pulled cable would show it, but this is not a pulled cable.
 async function dropTransport() {
   if (shim) { await fetch(`${SUPERVISOR}/control/drop-serial`); return; }
-  if (!dropCommand) throw new Error("drop_command_required");
-  const dropped = Bun.spawn(dropCommand.split(" "), { stdout: "ignore", stderr: "inherit" });
+  if (!maybeDropCommand) throw new Error("drop_command_required");
+  const dropped = Bun.spawn(maybeDropCommand.split(" "),{ stdout: "ignore", stderr: "inherit" });
   if (await dropped.exited !== 0) throw new Error("drop_command_failed");
 }
 
@@ -180,7 +180,8 @@ const scenarios: Record<string, () => Promise<unknown>> = {
     await connect();
     await beginLease(60_000, 20_000, 1);
     report("checkpoint", await step("beginPhysicalWindow"));
-    report("restart_requested", { http: (await fetch(`http://${deviceIp}/api/system/restart`, { method: "POST" })).status });
+    if (!maybeDeviceIp) throw new Error("device_ip_required");
+    report("restart_requested", { http: (await fetch(`http://${maybeDeviceIp}/api/system/restart`, { method: "POST" })).status });
     report("checkpoint", await step("armPhysicalWindow"));
     await sleep(3_000);
     await call("close");

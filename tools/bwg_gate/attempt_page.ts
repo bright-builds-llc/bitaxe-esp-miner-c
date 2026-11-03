@@ -11,7 +11,7 @@ const POLL_MS = 500;
 const POLLS = 260;
 const USER = "fixture-worker";
 
-const [kind, gate, trustPath, commit, elf, fixtureBinary, privateRoot, bridgePython] = process.argv.slice(2);
+const [kind, gate, trustPath, commit, elf, fixtureBinary, privateRoot] = process.argv.slice(2);
 if (kind !== "noise" && kind !== "channel" && kind !== "share") throw new Error("kind_must_be_noise_channel_or_share");
 const started = performance.now();
 const report = (event: string, detail: unknown = {}) => console.log(JSON.stringify({ t: Math.round(performance.now() - started), event, ...(detail as object) }));
@@ -70,7 +70,7 @@ mkdirSync(`${privateRoot}/v2-fixture`, { recursive: true, mode: 0o700 });
 const root = `${privateRoot}/v2-fixture/${Date.now()}-page-${kind}`;
 const peer = readFileSync(`${privateRoot}/ip.txt`, "utf8").trim();
 const attemptId = Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString("base64url");
-const fixture = Bun.spawn([bridgePython!, resolve(import.meta.dir, "v2_fixture.py"), fixtureBinary!, root, kind, attemptId, peer, USER], {
+const fixture = Bun.spawn([process.execPath, resolve(import.meta.dir, "v2_fixture.ts"), fixtureBinary!, root, kind, attemptId, peer, USER], {
   stdin: "ignore",
   stdout: "pipe",
   stderr: Bun.file(`${root}.stderr`),
@@ -98,8 +98,8 @@ async function readyOfNoise() {
 
 const ready = kind === "noise" ? await readyOfNoise() : await readyOfChannel();
 const keep = (status: unknown) => appendFileSync(`${root}.records.jsonl`, `${JSON.stringify(status)}\n`, { mode: 0o600 });
-const keepSafety = (status: unknown, observedAtUs: number | null) =>
-  appendFileSync(`${root}.safety.jsonl`, `${JSON.stringify({ atHostMs: Date.now(), observedAtUs, status })}\n`, { mode: 0o600 });
+const keepSafety = (status: unknown, maybeObservedAtUs: number | null) =>
+  appendFileSync(`${root}.safety.jsonl`, `${JSON.stringify({ atHostMs: Date.now(), observedAtUs: maybeObservedAtUs, status })}\n`, { mode: 0o600 });
 
 async function sign(operation: "start" | "renew", request: unknown, activeChallengeId: string, binding: string): Promise<string> {
   const signer = Bun.spawn(["bun", `${gate}/scripts/worker-development-authority.ts`, `sign-${operation}`, "--directory", dirname(trustPath!), "--input", "-", "--output", "-"], { stdin: "pipe", stdout: "pipe", stderr: "pipe", cwd: gate });

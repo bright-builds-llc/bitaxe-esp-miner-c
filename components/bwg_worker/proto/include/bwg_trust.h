@@ -36,6 +36,6 @@ bool bwg_trust_parse_lease_half(const bwg_allocator_t *allocator, const uint8_t 
                                 bwg_lease_trust_t *trust);
 
 /** The key with this ID, or NULL. */
-const bwg_trust_key_t *bwg_trust_find_key(const bwg_lease_trust_t *trust, const char *kid, size_t kid_len);
+const bwg_trust_key_t *bwg_trust_maybe_find_key(const bwg_lease_trust_t *trust, const char *kid, size_t kid_len);
 
 #endif // BWG_TRUST_H

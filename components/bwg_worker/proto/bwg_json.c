@@ -172,7 +172,7 @@ bool bwg_json_get_str(yyjson_val *value, bwg_str_t *out)
     return true;
 }
 
-yyjson_val *bwg_json_field(yyjson_val *object, const char *key)
+yyjson_val *bwg_json_maybe_field(yyjson_val *object, const char *key)
 {
     return yyjson_obj_get(object, key);
 }

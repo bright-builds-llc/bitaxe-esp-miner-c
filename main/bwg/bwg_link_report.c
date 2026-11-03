@@ -50,7 +50,7 @@ static uint32_t s_tx_failure_elapsed_ms;
 static size_t s_tx_failure_queued;
 static size_t s_tx_failure_record;
 
-static const char *tx_failure_stage(const bwg_writer_result_t *result)
+static const char *maybe_tx_failure_stage(const bwg_writer_result_t *result)
 {
     switch (result->failure) {
     case BWG_WRITER_FAILED_DEADLINE:
@@ -69,7 +69,7 @@ static const char *tx_failure_stage(const bwg_writer_result_t *result)
 
 void bwg_link_report_note_tx_failure(const bwg_writer_result_t *result)
 {
-    const char *stage = tx_failure_stage(result);
+    const char *stage = maybe_tx_failure_stage(result);
     if (stage == NULL) {
         return;
     }

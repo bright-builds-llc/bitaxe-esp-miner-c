@@ -103,9 +103,9 @@ static void system_api_add_telemetry(yyjson_mut_doc *doc, yyjson_mut_val *root, 
     yyjson_mut_obj_add_float(doc, root, "cpuUsage", g->SYSTEM_MODULE.cpu_usage);
     yyjson_mut_obj_add_bool(doc, root, "miningPaused", g->SYSTEM_MODULE.mining_paused);
     yyjson_mut_obj_add_str(doc, root, "miningActivity", bwg_mining_activity(g));
-    const char *pause_reason = bwg_mining_pause_reason(g);
-    if (pause_reason != NULL) {
-        yyjson_mut_obj_add_str(doc, root, "pauseReason", pause_reason);
+    const char *maybe_pause_reason = bwg_mining_maybe_pause_reason(g);
+    if (maybe_pause_reason != NULL) {
+        yyjson_mut_obj_add_str(doc, root, "pauseReason", maybe_pause_reason);
     }
     yyjson_mut_obj_add_int(doc, root, "overheat_mode", g->SYSTEM_MODULE.overheat_mode ? 1 : 0);
     yyjson_mut_obj_add_int(doc, root, "mineOnBoot", nvs_config_get_bool(NVS_CONFIG_MINE_ON_BOOT) ? 1 : 0);

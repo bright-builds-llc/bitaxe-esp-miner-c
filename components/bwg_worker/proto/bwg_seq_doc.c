@@ -93,6 +93,20 @@ bool bwg_seq_doc_get(const bwg_seq_doc_t *doc, const char *kid, uint64_t *sequen
     return false;
 }
 
+bwg_seq_verdict_t bwg_seq_doc_judge(const bwg_seq_doc_t *doc, const char *kid, bool has_expected, uint64_t expected,
+                                    uint64_t next)
+{
+    uint64_t current = 0;
+    const bool present = bwg_seq_doc_get(doc, kid, &current);
+    if (present && current == next) {
+        return BWG_SEQ_ALREADY_COMMITTED;
+    }
+    if (present != has_expected || (present && current != expected)) {
+        return BWG_SEQ_STALE;
+    }
+    return BWG_SEQ_WRITE;
+}
+
 bool bwg_seq_doc_equal(const bwg_seq_doc_t *left, const bwg_seq_doc_t *right)
 {
     if (left->count != right->count) {

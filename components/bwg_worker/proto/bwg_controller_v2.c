@@ -32,7 +32,7 @@ static bool parse_scope(yyjson_val *maybe_value, bwg_v2_scope_t *scope)
 static bool schema_is(yyjson_val *payload, const char *expected)
 {
     bwg_str_t schema;
-    return bwg_json_get_str(bwg_json_field(payload, "schema"), &schema) && bwg_str_equals(schema, expected);
+    return bwg_json_get_str(bwg_json_maybe_field(payload, "schema"), &schema) && bwg_str_equals(schema, expected);
 }
 
 typedef struct {
@@ -55,13 +55,13 @@ static bool parse_query(const bwg_ctrl_request_t *request, v2_query_t *query)
         query->scope = BWG_V2_SCOPE_CHANNEL;
         query->has_attempt_id = true;
         return bwg_json_has_exact_fields(payload, CANCEL, 2, NULL, 0) && schema_is(payload, "worker-stratum-v2-channel-cancel-v1") &&
-               bwg_json_get_str(bwg_json_field(payload, "attemptId"), &query->attempt_id) && attempt_id_is_valid(query->attempt_id);
+               bwg_json_get_str(bwg_json_maybe_field(payload, "attemptId"), &query->attempt_id) && attempt_id_is_valid(query->attempt_id);
     }
     if (!bwg_json_has_exact_fields(payload, QUERY, 3, NULL, 0) || !schema_is(payload, "worker-stratum-v2-query-v1") ||
-        !parse_scope(bwg_json_field(payload, "scope"), &query->scope)) {
+        !parse_scope(bwg_json_maybe_field(payload, "scope"), &query->scope)) {
         return false;
     }
-    yyjson_val *attempt = bwg_json_field(payload, "attemptId");
+    yyjson_val *attempt = bwg_json_maybe_field(payload, "attemptId");
     query->has_attempt_id = !yyjson_is_null(attempt);
     return !query->has_attempt_id || (bwg_json_get_str(attempt, &query->attempt_id) && attempt_id_is_valid(query->attempt_id));
 }
@@ -95,7 +95,7 @@ static bwg_ctrl_error_t observe(bwg_controller_t *controller, const bwg_ctrl_req
     }
     // A retained binding allows observing or cancelling an attempt, never starting one.
     if ((!controller->has_v2_generation || controller->v2_generation != controller->generation) &&
-        bwg_ctrl_active_context(controller) == NULL) {
+        bwg_ctrl_maybe_active_context(controller) == NULL) {
         return BWG_CTRL_ADMISSION_REQUIRED;
     }
     bwg_v2_view_t view;
@@ -103,7 +103,7 @@ static bwg_ctrl_error_t observe(bwg_controller_t *controller, const bwg_ctrl_req
         return BWG_CTRL_SESSION_FAILED;
     }
     if (!query.has_attempt_id && !view.has_record && !query.cancel && view.state == BWG_V2_STATE_IDLE) {
-        if (bwg_ctrl_start_context(controller, now_ms) == NULL) {
+        if (bwg_ctrl_maybe_start_context(controller, now_ms) == NULL) {
             return BWG_CTRL_ADMISSION_REQUIRED;
         }
         const bwg_ctrl_error_t error = reply_status(controller, request, query.scope, &view.observation, outcome);
@@ -148,18 +148,18 @@ static bool parse_channel_start(yyjson_val *payload, bwg_v2_channel_input_t *inp
     static const char *const REQUIRED[] = {"schema", "attemptId", "expectedBootOrdinal", "networkObservedAtUs", "stratum"};
     return payload != NULL && bwg_json_has_exact_fields(payload, REQUIRED, 5, NULL, 0) &&
            schema_is(payload, "worker-stratum-v2-channel-start-v1") &&
-           bwg_json_get_str(bwg_json_field(payload, "attemptId"), &input->attempt_id) && attempt_id_is_valid(input->attempt_id) &&
-           bwg_json_get_u64(bwg_json_field(payload, "expectedBootOrdinal"), boot_ordinal) && *boot_ordinal > 0 &&
-           *boot_ordinal <= MAX_SAFE_INTEGER && bwg_json_get_u64(bwg_json_field(payload, "networkObservedAtUs"), observed_at_us) &&
+           bwg_json_get_str(bwg_json_maybe_field(payload, "attemptId"), &input->attempt_id) && attempt_id_is_valid(input->attempt_id) &&
+           bwg_json_get_u64(bwg_json_maybe_field(payload, "expectedBootOrdinal"), boot_ordinal) && *boot_ordinal > 0 &&
+           *boot_ordinal <= MAX_SAFE_INTEGER && bwg_json_get_u64(bwg_json_maybe_field(payload, "networkObservedAtUs"), observed_at_us) &&
            *observed_at_us <= MAX_SAFE_INTEGER &&
-           bwg_stratum_v2_parse(bwg_json_field(payload, "stratum"), &input->endpoint, &input->authority_public_key, &input->user_identity) &&
+           bwg_stratum_v2_parse(bwg_json_maybe_field(payload, "stratum"), &input->endpoint, &input->authority_public_key, &input->user_identity) &&
            bwg_stratum_v2_is_valid(input->endpoint, input->authority_public_key, input->user_identity);
 }
 
 static bwg_ctrl_error_t admit(bwg_controller_t *controller, const bwg_ctrl_request_t *request, uint64_t now_ms, bwg_ctrl_outcome_t *outcome)
 {
     const bwg_controller_ops_t *ops = &controller->ops;
-    if (bwg_ctrl_start_context(controller, now_ms) == NULL) {
+    if (bwg_ctrl_maybe_start_context(controller, now_ms) == NULL) {
         return BWG_CTRL_ADMISSION_REQUIRED;
     }
     if (controller->has_active || controller->cleanup_required || controller->boot_clear_required || bwg_ctrl_attempt_busy(controller) ||
@@ -243,7 +243,7 @@ bwg_ctrl_error_t bwg_ctrl_confirm_v2_dispatch(bwg_controller_t *controller, cons
     const bwg_controller_ops_t *ops = &controller->ops;
     bwg_ctrl_error_t error = bwg_ctrl_enforce_clock(controller, now_ms);
     if (error == BWG_CTRL_OK &&
-        (bwg_ctrl_start_context(controller, now_ms) == NULL || effect->generation != controller->generation ||
+        (bwg_ctrl_maybe_start_context(controller, now_ms) == NULL || effect->generation != controller->generation ||
          !controller->has_v2_generation || controller->v2_generation != effect->generation || controller->has_pending_token ||
          controller->has_active || controller->cleanup_required || !controller->authenticated_logical_session)) {
         error = BWG_CTRL_STALE_RESPONSE;

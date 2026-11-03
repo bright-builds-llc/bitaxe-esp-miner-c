@@ -42,5 +42,6 @@ void bwg_tests_cutoff(void);
 void bwg_tests_restart_guard(void);
 void bwg_tests_core_dump_receipt(void);
 void bwg_tests_preparation_receipt(void);
+void bwg_tests_mining_rules(void);
 
 #endif // BWG_TEST_SUITES_H

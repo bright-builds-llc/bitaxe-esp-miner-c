@@ -18,7 +18,7 @@ static bool payload_is_empty(const bwg_ctrl_request_t *request)
 /** Reviews need fresh possession, no lease and no pending cleanup or admission. */
 static bwg_ctrl_error_t require_review_idle(const bwg_controller_t *controller, uint64_t now_ms)
 {
-    if (bwg_ctrl_start_context(controller, now_ms) == NULL) {
+    if (bwg_ctrl_maybe_start_context(controller, now_ms) == NULL) {
         return BWG_CTRL_ADMISSION_REQUIRED;
     }
     if (controller->has_active || controller->cleanup_required || controller->has_cleanup_reason ||
@@ -151,7 +151,7 @@ bwg_ctrl_error_t bwg_ctrl_prepare_campaign_review(bwg_controller_t *controller, 
     static const char *const REQUIRED[] = {"campaignId"};
     bwg_str_t campaign_id;
     if (request->maybe_payload == NULL || !bwg_json_has_exact_fields(request->maybe_payload, REQUIRED, 1, NULL, 0) ||
-        !bwg_json_get_str(bwg_json_field(request->maybe_payload, "campaignId"), &campaign_id)) {
+        !bwg_json_get_str(bwg_json_maybe_field(request->maybe_payload, "campaignId"), &campaign_id)) {
         return BWG_CTRL_INVALID_REQUEST;
     }
     bwg_ctrl_error_t error = require_review_idle(controller, now_ms);
@@ -185,11 +185,11 @@ bwg_ctrl_error_t bwg_ctrl_prepare_stimulus(bwg_controller_t *controller, const b
     static const char *const REQUIRED[] = {"requestNonce"};
     bwg_str_t nonce;
     if (request->maybe_payload == NULL || !bwg_json_has_exact_fields(request->maybe_payload, REQUIRED, 1, NULL, 0) ||
-        !bwg_json_get_str(bwg_json_field(request->maybe_payload, "requestNonce"), &nonce) ||
+        !bwg_json_get_str(bwg_json_maybe_field(request->maybe_payload, "requestNonce"), &nonce) ||
         !bwg_b64url_is_canonical(nonce.ptr, nonce.len, REQUEST_NONCE_BYTES)) {
         return BWG_CTRL_INVALID_REQUEST;
     }
-    if (bwg_ctrl_active_context(controller) == NULL) {
+    if (bwg_ctrl_maybe_active_context(controller) == NULL) {
         return BWG_CTRL_ADMISSION_REQUIRED;
     }
     if (!stimulus_window_is_open(controller, now_ms) || !bwg_clock_stimulus_can_prepare(&controller->stimulus)) {
@@ -232,7 +232,7 @@ bwg_ctrl_error_t bwg_ctrl_confirm_stimulus(bwg_controller_t *controller, const b
     if (error != BWG_CTRL_OK) {
         return error;
     }
-    if (bwg_ctrl_active_context(controller) == NULL) {
+    if (bwg_ctrl_maybe_active_context(controller) == NULL) {
         return BWG_CTRL_ADMISSION_REQUIRED;
     }
     if (!stimulus_window_is_open(controller, now_ms)) {

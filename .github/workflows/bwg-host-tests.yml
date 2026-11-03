@@ -1,0 +1,32 @@
+# The fork's Bitcoin Work Gate core: its host tests, plain and under sanitizers. Upstream's unittest.yml runs only
+# the QEMU suite, so these would otherwise never run in CI.
+name: BWG Host Tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  host-tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+        with:
+          submodules: 'recursive'
+
+      - name: Install libsodium
+        run: sudo apt-get update && sudo apt-get install -y libsodium-dev pkg-config
+
+      - name: Run host tests
+        run: bash tools/run_bwg_host_tests.sh
+
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bwg-host-test-logs
+          path: build/bwg_host_tests/*/last_run.log

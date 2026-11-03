@@ -72,7 +72,7 @@ bool bwg_ledger_validate(bwg_allowance_kind_t kind, const bwg_ledger_t *ledger)
 static bool read_u32(yyjson_val *object, const char *key, uint32_t *out)
 {
     uint64_t value;
-    if (!bwg_json_get_u64(bwg_json_field(object, key), &value) || value > UINT32_MAX) {
+    if (!bwg_json_get_u64(bwg_json_maybe_field(object, key), &value) || value > UINT32_MAX) {
         return false;
     }
     *out = (uint32_t) value;
@@ -82,8 +82,8 @@ static bool read_u32(yyjson_val *object, const char *key, uint32_t *out)
 static bool read_last(bwg_allowance_kind_t kind, yyjson_val *last, bwg_ledger_t *ledger)
 {
     static const char *const REQUIRED[] = {"allowance", "complete"};
-    yyjson_val *complete = bwg_json_field(last, "complete");
-    yyjson_val *allowance_value = bwg_json_field(last, "allowance");
+    yyjson_val *complete = bwg_json_maybe_field(last, "complete");
+    yyjson_val *allowance_value = bwg_json_maybe_field(last, "allowance");
     bwg_allowance_t allowance = {0};
     const bool parsed = bwg_json_has_exact_fields(last, REQUIRED, 2, NULL, 0) && yyjson_is_bool(complete) &&
                         (kind == BWG_ALLOWANCE_SOAK ? bwg_allowance_parse_soak(allowance_value, &allowance)
@@ -111,10 +111,10 @@ bool bwg_ledger_parse(bwg_allowance_kind_t kind, const bwg_allocator_t *allocato
         return false;
     }
     yyjson_val *root = yyjson_doc_get_root(doc);
-    yyjson_val *maybe_last = bwg_json_field(root, "maybe_last");
+    yyjson_val *maybe_last = bwg_json_maybe_field(root, "maybe_last");
     bool ok = bwg_json_has_exact_fields(root, REQUIRED, 2, OPTIONAL, 1) &&
               read_u32(root, "highest_ordinal", &ledger->highest_ordinal) &&
-              bwg_json_get_u64(bwg_json_field(root, "total_charged_ms"), &ledger->total_charged_ms);
+              bwg_json_get_u64(bwg_json_maybe_field(root, "total_charged_ms"), &ledger->total_charged_ms);
     if (ok && maybe_last != NULL && !yyjson_is_null(maybe_last)) {
         ok = read_last(kind, maybe_last, ledger);
     }
@@ -290,11 +290,11 @@ bool bwg_campaign_parse(const bwg_allocator_t *allocator, const uint8_t *text, s
     uint32_t completed = 0;
     uint32_t running = 0;
     bool ok = bwg_json_has_exact_fields(root, REQUIRED, 4, OPTIONAL, 1) &&
-              bwg_json_get_str(bwg_json_field(root, "campaign_id"), &id) && id.len == BWG_ALLOWANCE_ID_SIZE - 1 &&
+              bwg_json_get_str(bwg_json_maybe_field(root, "campaign_id"), &id) && id.len == BWG_ALLOWANCE_ID_SIZE - 1 &&
               read_u32(root, "reserved", &reserved) && reserved <= UINT8_MAX &&
               read_u32(root, "completed", &completed) && completed <= UINT8_MAX &&
               read_u32(root, "charged_ms", &campaign->charged_ms);
-    yyjson_val *maybe_running = bwg_json_field(root, "maybe_running_window");
+    yyjson_val *maybe_running = bwg_json_maybe_field(root, "maybe_running_window");
     if (ok && maybe_running != NULL && !yyjson_is_null(maybe_running)) {
         ok = read_u32(root, "maybe_running_window", &running) && running <= UINT8_MAX;
         campaign->has_running = true;

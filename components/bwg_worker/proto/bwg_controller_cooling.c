@@ -17,7 +17,7 @@ static bwg_ctrl_error_t prove_fan(bwg_controller_t *controller, const bwg_ctrl_r
                                   bwg_ctrl_outcome_t *outcome)
 {
     const bwg_controller_ops_t *ops = &controller->ops;
-    if (bwg_ctrl_start_context(controller, now_ms) == NULL) {
+    if (bwg_ctrl_maybe_start_context(controller, now_ms) == NULL) {
         return BWG_CTRL_ADMISSION_REQUIRED;
     }
     if (controller->cleanup_required || controller->boot_clear_required) {
@@ -55,7 +55,7 @@ static bwg_ctrl_error_t restore_baseline(bwg_controller_t *controller, const bwg
                                          bwg_ctrl_outcome_t *outcome)
 {
     const bwg_controller_ops_t *ops = &controller->ops;
-    if (bwg_ctrl_active_context(controller) == NULL) {
+    if (bwg_ctrl_maybe_active_context(controller) == NULL) {
         return BWG_CTRL_ADMISSION_REQUIRED;
     }
     if (!controller->cleanup_required) {
@@ -101,7 +101,7 @@ bwg_ctrl_error_t bwg_ctrl_prepare_cooling(bwg_controller_t *controller, const bw
     static const char *const REQUIRED[] = {"action"};
     bwg_str_t action;
     if (request->maybe_payload == NULL || !bwg_json_has_exact_fields(request->maybe_payload, REQUIRED, 1, NULL, 0) ||
-        !bwg_json_get_str(bwg_json_field(request->maybe_payload, "action"), &action) ||
+        !bwg_json_get_str(bwg_json_maybe_field(request->maybe_payload, "action"), &action) ||
         controller->ops.maybe_cooling_prove == NULL || controller->ops.maybe_cooling_restore == NULL) {
         return BWG_CTRL_INVALID_REQUEST;
     }

@@ -7,6 +7,7 @@
 #include "asic.h"
 #include "asic_reset.h"
 #include "bwg_limits.h"
+#include "bwg_mining_rules.h"
 #include "driver/uart.h"
 #include "EMC2101.h"
 #include "esp_log.h"
@@ -22,7 +23,6 @@
 #define FAN_PAUSED_PERCENT 30
 #define NO_FAN_HOLD (-1)
 #define COOLING_POLL_MS 1000
-#define COOL_READINGS_TO_PROVE 3
 // The fan task passes every 100 ms, and a sample older than a second reads as stale.
 #define SAMPLE_EVERY_FAN_PASSES 5u
 #define COOLING_OVERDUE_MS 120000
@@ -62,7 +62,7 @@ static void prove_cooling(GlobalState *GLOBAL_STATE)
     const bool has_limits = limits_of(GLOBAL_STATE, &limits);
     const int64_t started_us = esp_timer_get_time();
     bool reported_overdue = false;
-    // The sensor's whole degrees flicker at the limit, and the Gate judges a reading taken after the proof.
+    // The Gate judges a reading taken after the proof.
     uint32_t cool_readings = 0;
 
     while (true) {
@@ -76,8 +76,8 @@ static void prove_cooling(GlobalState *GLOBAL_STATE)
         };
         power->chip_temp_avg = sample.chip_celsius;
         power->vr_temp = sample.regulator_celsius;
-        cool_readings = has_limits && bwg_limits_cooling_proven(&limits, &sample) ? cool_readings + 1 : 0;
-        if (cool_readings >= COOL_READINGS_TO_PROVE) {
+        cool_readings = bwg_cool_streak_next(cool_readings, has_limits && bwg_limits_cooling_proven(&limits, &sample));
+        if (bwg_cool_streak_proves_cooling(cool_readings)) {
             ESP_LOGI(TAG, "Cooling proven after %lu ms", (unsigned long)elapsed_ms);
             return;
         }

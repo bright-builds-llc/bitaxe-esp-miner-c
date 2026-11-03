@@ -39,18 +39,18 @@ static bool is_valid_window(uint64_t duration, uint64_t renew_after)
 
 static bool get_str(yyjson_val *object, const char *key, bwg_str_t *out)
 {
-    return bwg_json_get_str(bwg_json_field(object, key), out);
+    return bwg_json_get_str(bwg_json_maybe_field(object, key), out);
 }
 
 static bool parse_v1(yyjson_val *stratum, bwg_lease_grant_t *grant)
 {
-    if (bwg_json_field(stratum, "authorityPublicKey") != NULL || bwg_json_field(stratum, "userIdentity") != NULL) {
+    if (bwg_json_maybe_field(stratum, "authorityPublicKey") != NULL || bwg_json_maybe_field(stratum, "userIdentity") != NULL) {
         return false;
     }
     if (!get_str(stratum, "username", &grant->username) || !get_str(stratum, "password", &grant->password)) {
         return false;
     }
-    yyjson_val *maybe_difficulty = bwg_json_field(stratum, "suggestedDifficulty");
+    yyjson_val *maybe_difficulty = bwg_json_maybe_field(stratum, "suggestedDifficulty");
     if (maybe_difficulty == NULL) {
         return true;
     }
@@ -90,7 +90,7 @@ static bool parse_stratum(yyjson_val *stratum, bwg_lease_grant_t *grant)
     if (!bwg_json_has_exact_fields(stratum, required, 1, optional, 6) || !get_str(stratum, "endpoint", &grant->endpoint)) {
         return false;
     }
-    if (bwg_json_field(stratum, "profile") != NULL) {
+    if (bwg_json_maybe_field(stratum, "profile") != NULL) {
         return parse_v2(stratum, grant);
     }
     grant->stratum_kind = BWG_STRATUM_V1;
@@ -101,7 +101,7 @@ static bool parse_stratum(yyjson_val *stratum, bwg_lease_grant_t *grant)
 static bool parse_extension(yyjson_val *payload, const char *key, yyjson_val **out,
                             bool (*parse)(yyjson_val *object, bwg_allowance_t *allowance), bwg_lease_grant_t *grant)
 {
-    yyjson_val *value = bwg_json_field(payload, key);
+    yyjson_val *value = bwg_json_maybe_field(payload, key);
     *out = value;
     return value == NULL || parse(value, &grant->allowance);
 }
@@ -117,9 +117,9 @@ bool bwg_lease_grant_parse(yyjson_val *payload, bwg_lease_grant_t *grant)
            get_str(payload, "protocolVersion", &grant->protocol_version) && get_str(payload, "leaseId", &grant->lease_id) &&
            get_str(payload, "challengeId", &grant->challenge_id) &&
            get_str(payload, "authorization", &grant->authorization) &&
-           bwg_json_get_u64(bwg_json_field(payload, "durationMilliseconds"), &grant->duration_ms) &&
-           bwg_json_get_u64(bwg_json_field(payload, "renewAfterMilliseconds"), &grant->renew_after_ms) &&
-           parse_stratum(bwg_json_field(payload, "stratum"), grant) &&
+           bwg_json_get_u64(bwg_json_maybe_field(payload, "durationMilliseconds"), &grant->duration_ms) &&
+           bwg_json_get_u64(bwg_json_maybe_field(payload, "renewAfterMilliseconds"), &grant->renew_after_ms) &&
+           parse_stratum(bwg_json_maybe_field(payload, "stratum"), grant) &&
            parse_extension(payload, "acceptanceCampaign", &grant->maybe_acceptance_campaign, bwg_allowance_parse_campaign, grant) &&
            parse_extension(payload, "qualificationAttempt", &grant->maybe_qualification_attempt, bwg_allowance_parse_attempt, grant) &&
            parse_extension(payload, "soakAllowance", &grant->maybe_soak_allowance, bwg_allowance_parse_soak, grant);
@@ -176,8 +176,8 @@ bool bwg_lease_renewal_parse(yyjson_val *payload, bwg_lease_renewal_t *renewal)
     return bwg_json_has_exact_fields(payload, required, 5, NULL, 0) &&
            get_str(payload, "protocolVersion", &renewal->protocol_version) &&
            get_str(payload, "leaseId", &renewal->lease_id) && get_str(payload, "authorization", &renewal->authorization) &&
-           bwg_json_get_u64(bwg_json_field(payload, "durationMilliseconds"), &renewal->duration_ms) &&
-           bwg_json_get_u64(bwg_json_field(payload, "renewAfterMilliseconds"), &renewal->renew_after_ms);
+           bwg_json_get_u64(bwg_json_maybe_field(payload, "durationMilliseconds"), &renewal->duration_ms) &&
+           bwg_json_get_u64(bwg_json_maybe_field(payload, "renewAfterMilliseconds"), &renewal->renew_after_ms);
 }
 
 bool bwg_lease_renewal_validate(const bwg_lease_renewal_t *renewal)

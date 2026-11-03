@@ -23,7 +23,7 @@ static bool attempt_id_is_valid(bwg_str_t attempt_id)
 static bool schema_is(yyjson_val *payload, const char *expected)
 {
     bwg_str_t schema;
-    return bwg_json_get_str(bwg_json_field(payload, "schema"), &schema) && bwg_str_equals(schema, expected);
+    return bwg_json_get_str(bwg_json_maybe_field(payload, "schema"), &schema) && bwg_str_equals(schema, expected);
 }
 
 static bool view_of(const bwg_controller_t *controller, bwg_noise_view_t *view)
@@ -51,7 +51,7 @@ static bool parse_query(yyjson_val *payload, bool *has_attempt_id, bwg_str_t *at
     if (payload == NULL || !bwg_json_has_exact_fields(payload, FIELDS, 2, NULL, 0) || !schema_is(payload, "worker-noise-diagnostic-query-v1")) {
         return false;
     }
-    yyjson_val *attempt = bwg_json_field(payload, "attemptId");
+    yyjson_val *attempt = bwg_json_maybe_field(payload, "attemptId");
     *has_attempt_id = !yyjson_is_null(attempt);
     return !*has_attempt_id || (bwg_json_get_str(attempt, attempt_id) && attempt_id_is_valid(*attempt_id));
 }
@@ -68,7 +68,7 @@ static bwg_ctrl_error_t observe(bwg_controller_t *controller, const bwg_ctrl_req
     }
     // A retained binding allows observing or cancelling an attempt, never starting one.
     if ((!controller->has_noise_generation || controller->noise_generation != controller->generation) &&
-        bwg_ctrl_active_context(controller) == NULL) {
+        bwg_ctrl_maybe_active_context(controller) == NULL) {
         return BWG_CTRL_ADMISSION_REQUIRED;
     }
     bwg_noise_view_t view;
@@ -76,7 +76,7 @@ static bwg_ctrl_error_t observe(bwg_controller_t *controller, const bwg_ctrl_req
         return BWG_CTRL_SESSION_FAILED;
     }
     if (!has_attempt_id && !view.has_record && !cancel) {
-        if (bwg_ctrl_start_context(controller, now_ms) == NULL) {
+        if (bwg_ctrl_maybe_start_context(controller, now_ms) == NULL) {
             return BWG_CTRL_ADMISSION_REQUIRED;
         }
         const bwg_ctrl_error_t error = reply_status(controller, request, &view.observation, outcome);
@@ -108,12 +108,12 @@ static bool parse_start(yyjson_val *payload, bwg_noise_input_t *input, uint64_t 
     uint64_t port = 0;
     uint8_t octets[4];
     if (payload == NULL || !bwg_json_has_exact_fields(payload, FIELDS, 7, NULL, 0) || !schema_is(payload, "worker-noise-diagnostic-start-v2") ||
-        !bwg_json_get_str(bwg_json_field(payload, "attemptId"), &input->attempt_id) || !attempt_id_is_valid(input->attempt_id) ||
-        !bwg_json_get_u64(bwg_json_field(payload, "expectedBootOrdinal"), boot_ordinal) || *boot_ordinal == 0 || *boot_ordinal > MAX_SAFE_INTEGER ||
-        !bwg_json_get_u64(bwg_json_field(payload, "networkObservedAtUs"), observed_at_us) || *observed_at_us > MAX_SAFE_INTEGER ||
-        !bwg_json_get_str(bwg_json_field(payload, "fixtureIpv4"), &input->fixture_ipv4) || !bwg_private_ipv4_parse(input->fixture_ipv4, octets) ||
-        !bwg_json_get_u64(bwg_json_field(payload, "fixturePort"), &port) || port == 0 || port > UINT16_MAX ||
-        !bwg_json_get_str(bwg_json_field(payload, "authorityPublicKey"), &input->authority_public_key) ||
+        !bwg_json_get_str(bwg_json_maybe_field(payload, "attemptId"), &input->attempt_id) || !attempt_id_is_valid(input->attempt_id) ||
+        !bwg_json_get_u64(bwg_json_maybe_field(payload, "expectedBootOrdinal"), boot_ordinal) || *boot_ordinal == 0 || *boot_ordinal > MAX_SAFE_INTEGER ||
+        !bwg_json_get_u64(bwg_json_maybe_field(payload, "networkObservedAtUs"), observed_at_us) || *observed_at_us > MAX_SAFE_INTEGER ||
+        !bwg_json_get_str(bwg_json_maybe_field(payload, "fixtureIpv4"), &input->fixture_ipv4) || !bwg_private_ipv4_parse(input->fixture_ipv4, octets) ||
+        !bwg_json_get_u64(bwg_json_maybe_field(payload, "fixturePort"), &port) || port == 0 || port > UINT16_MAX ||
+        !bwg_json_get_str(bwg_json_maybe_field(payload, "authorityPublicKey"), &input->authority_public_key) ||
         !bwg_b64url_is_canonical(input->authority_public_key.ptr, input->authority_public_key.len, NOISE_KEY_BYTES)) {
         return false;
     }
@@ -140,7 +140,7 @@ static bool hash_input(yyjson_val *payload, char text[BWG_NOISE_DIGEST_TEXT_SIZE
 static bwg_ctrl_error_t admit(bwg_controller_t *controller, const bwg_ctrl_request_t *request, uint64_t now_ms, bwg_ctrl_outcome_t *outcome)
 {
     const bwg_controller_ops_t *ops = &controller->ops;
-    if (bwg_ctrl_start_context(controller, now_ms) == NULL) {
+    if (bwg_ctrl_maybe_start_context(controller, now_ms) == NULL) {
         return BWG_CTRL_ADMISSION_REQUIRED;
     }
     if (controller->has_active || controller->cleanup_required || controller->boot_clear_required || bwg_ctrl_attempt_busy(controller) ||
@@ -206,7 +206,7 @@ bwg_ctrl_error_t bwg_ctrl_confirm_noise_dispatch(bwg_controller_t *controller, c
     const bwg_controller_ops_t *ops = &controller->ops;
     bwg_ctrl_error_t error = bwg_ctrl_enforce_clock(controller, now_ms);
     if (error == BWG_CTRL_OK &&
-        (bwg_ctrl_start_context(controller, now_ms) == NULL || effect->generation != controller->generation ||
+        (bwg_ctrl_maybe_start_context(controller, now_ms) == NULL || effect->generation != controller->generation ||
          !controller->has_noise_generation || controller->noise_generation != effect->generation || controller->has_pending_token ||
          controller->has_active || controller->cleanup_required || !controller->authenticated_logical_session)) {
         error = BWG_CTRL_STALE_RESPONSE;

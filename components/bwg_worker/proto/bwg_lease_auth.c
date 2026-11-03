@@ -171,8 +171,8 @@ static bool check_header(const verify_input_t *input, const uint8_t *bytes, size
     bwg_str_t alg;
     bwg_str_t kid;
     bwg_str_t typ;
-    bool ok = bwg_json_has_exact_fields(root, fields, 3, NULL, 0) && bwg_json_get_str(bwg_json_field(root, "alg"), &alg) &&
-              bwg_json_get_str(bwg_json_field(root, "kid"), &kid) && bwg_json_get_str(bwg_json_field(root, "typ"), &typ) &&
+    bool ok = bwg_json_has_exact_fields(root, fields, 3, NULL, 0) && bwg_json_get_str(bwg_json_maybe_field(root, "alg"), &alg) &&
+              bwg_json_get_str(bwg_json_maybe_field(root, "kid"), &kid) && bwg_json_get_str(bwg_json_maybe_field(root, "typ"), &typ) &&
               bwg_str_equals(alg, "Ed25519") && bwg_str_equals(typ, AUTHORIZATION_TYPE) && is_kid(kid) &&
               is_canonical(root, bytes, len, scratch);
     if (ok) {
@@ -197,10 +197,10 @@ static bool check_claims(const verify_input_t *input, const uint8_t *bytes, size
     bwg_str_t digest;
     bwg_str_t sequence;
     bool ok = bwg_json_has_exact_fields(root, fields, 4, NULL, 0) &&
-              bwg_json_get_str(bwg_json_field(root, "controlSessionBindingSha256"), &binding) &&
-              bwg_json_get_str(bwg_json_field(root, "operation"), &operation) &&
-              bwg_json_get_str(bwg_json_field(root, "requestSha256"), &digest) &&
-              bwg_json_get_str(bwg_json_field(root, "sequence"), &sequence) && bwg_str_equals(operation, input->operation) &&
+              bwg_json_get_str(bwg_json_maybe_field(root, "controlSessionBindingSha256"), &binding) &&
+              bwg_json_get_str(bwg_json_maybe_field(root, "operation"), &operation) &&
+              bwg_json_get_str(bwg_json_maybe_field(root, "requestSha256"), &digest) &&
+              bwg_json_get_str(bwg_json_maybe_field(root, "sequence"), &sequence) && bwg_str_equals(operation, input->operation) &&
               bwg_digest_text_is_valid(digest.ptr, digest.len) && is_canonical(root, bytes, len, scratch) &&
               parse_sequence(sequence, &verified->sequence) && bwg_str_equals(digest, input->expected_digest);
     if (ok) {
@@ -241,7 +241,7 @@ static bool verify_jws(const verify_input_t *input, bwg_str_t compact, verified_
         return false;
     }
     input->attribution->context = verified->context_matches ? BWG_AUTH_CONTEXT_CURRENT : BWG_AUTH_CONTEXT_MISMATCH;
-    const bwg_trust_key_t *maybe_key = bwg_trust_find_key(input->trust, verified->kid, strlen(verified->kid));
+    const bwg_trust_key_t *maybe_key = bwg_trust_maybe_find_key(input->trust, verified->kid, strlen(verified->kid));
     if (maybe_key == NULL) {
         return false;
     }

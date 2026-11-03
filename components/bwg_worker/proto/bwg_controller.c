@@ -333,7 +333,7 @@ const char *bwg_controller_capability_digest(const bwg_controller_t *controller)
     return controller->capability_digest;
 }
 
-const char *bwg_ctrl_active_context(const bwg_controller_t *controller)
+const char *bwg_ctrl_maybe_active_context(const bwg_controller_t *controller)
 {
     if (!controller->has_admission || controller->admission_generation != controller->generation) {
         return NULL;
@@ -341,9 +341,9 @@ const char *bwg_ctrl_active_context(const bwg_controller_t *controller)
     return controller->admission_binding;
 }
 
-const char *bwg_ctrl_start_context(const bwg_controller_t *controller, uint64_t now_ms)
+const char *bwg_ctrl_maybe_start_context(const bwg_controller_t *controller, uint64_t now_ms)
 {
-    const char *maybe_binding = bwg_ctrl_active_context(controller);
+    const char *maybe_binding = bwg_ctrl_maybe_active_context(controller);
     if (maybe_binding == NULL) {
         return NULL;
     }

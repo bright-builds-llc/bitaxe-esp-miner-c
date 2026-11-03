@@ -26,7 +26,7 @@ static bool parse_purpose(bwg_str_t text, bwg_attempt_purpose_t *out)
 static bool get_u32(yyjson_val *object, const char *key, uint32_t *out)
 {
     uint64_t value;
-    if (!bwg_json_get_u64(bwg_json_field(object, key), &value) || value > UINT32_MAX) {
+    if (!bwg_json_get_u64(bwg_json_maybe_field(object, key), &value) || value > UINT32_MAX) {
         return false;
     }
     *out = (uint32_t) value;
@@ -39,10 +39,10 @@ bool bwg_allowance_parse_attempt(yyjson_val *object, bwg_allowance_t *out)
     bwg_str_t purpose;
     out->kind = BWG_ALLOWANCE_ATTEMPT;
     return bwg_json_has_exact_fields(object, REQUIRED, 5, NULL, 0) &&
-           bwg_json_get_str(bwg_json_field(object, "schema"), &out->schema) &&
-           bwg_json_get_str(bwg_json_field(object, "id"), &out->id) && get_u32(object, "ordinal", &out->ordinal) &&
-           bwg_json_get_str(bwg_json_field(object, "purpose"), &purpose) && parse_purpose(purpose, &out->purpose) &&
-           bwg_json_get_u64(bwg_json_field(object, "maximumActiveMilliseconds"), &out->maximum_active_ms);
+           bwg_json_get_str(bwg_json_maybe_field(object, "schema"), &out->schema) &&
+           bwg_json_get_str(bwg_json_maybe_field(object, "id"), &out->id) && get_u32(object, "ordinal", &out->ordinal) &&
+           bwg_json_get_str(bwg_json_maybe_field(object, "purpose"), &purpose) && parse_purpose(purpose, &out->purpose) &&
+           bwg_json_get_u64(bwg_json_maybe_field(object, "maximumActiveMilliseconds"), &out->maximum_active_ms);
 }
 
 bool bwg_allowance_parse_campaign(yyjson_val *object, bwg_allowance_t *out)
@@ -51,12 +51,12 @@ bool bwg_allowance_parse_campaign(yyjson_val *object, bwg_allowance_t *out)
     uint64_t window;
     out->kind = BWG_ALLOWANCE_CAMPAIGN;
     if (!bwg_json_has_exact_fields(object, REQUIRED, 3, NULL, 0) ||
-        !bwg_json_get_str(bwg_json_field(object, "id"), &out->id) ||
-        !bwg_json_get_u64(bwg_json_field(object, "window"), &window) || window > UINT8_MAX) {
+        !bwg_json_get_str(bwg_json_maybe_field(object, "id"), &out->id) ||
+        !bwg_json_get_u64(bwg_json_maybe_field(object, "window"), &window) || window > UINT8_MAX) {
         return false;
     }
     out->window = (uint8_t) window;
-    return bwg_json_get_u64(bwg_json_field(object, "maximumActiveMilliseconds"), &out->maximum_active_ms);
+    return bwg_json_get_u64(bwg_json_maybe_field(object, "maximumActiveMilliseconds"), &out->maximum_active_ms);
 }
 
 bool bwg_allowance_parse_soak(yyjson_val *object, bwg_allowance_t *out)
@@ -64,9 +64,9 @@ bool bwg_allowance_parse_soak(yyjson_val *object, bwg_allowance_t *out)
     static const char *const REQUIRED[] = {"schema", "id", "ordinal", "maximumActiveMilliseconds"};
     out->kind = BWG_ALLOWANCE_SOAK;
     return bwg_json_has_exact_fields(object, REQUIRED, 4, NULL, 0) &&
-           bwg_json_get_str(bwg_json_field(object, "schema"), &out->schema) &&
-           bwg_json_get_str(bwg_json_field(object, "id"), &out->id) && get_u32(object, "ordinal", &out->ordinal) &&
-           bwg_json_get_u64(bwg_json_field(object, "maximumActiveMilliseconds"), &out->maximum_active_ms);
+           bwg_json_get_str(bwg_json_maybe_field(object, "schema"), &out->schema) &&
+           bwg_json_get_str(bwg_json_maybe_field(object, "id"), &out->id) && get_u32(object, "ordinal", &out->ordinal) &&
+           bwg_json_get_u64(bwg_json_maybe_field(object, "maximumActiveMilliseconds"), &out->maximum_active_ms);
 }
 
 bool bwg_allowance_validate(const bwg_allowance_t *allowance)

@@ -62,9 +62,92 @@ static void seq_doc_refuses_a_ninth_key(void)
     ASSERT_TRUE(value == 5);
 }
 
+static bwg_seq_doc_t doc_with_a_at(uint64_t sequence)
+{
+    return (bwg_seq_doc_t){.count = 1, .entries = {{.kid = "a", .sequence = sequence}}};
+}
+
+static void a_high_water_moves_from_the_one_expected(void)
+{
+    // Arrange
+    const bwg_seq_doc_t doc = doc_with_a_at(4);
+
+    // Act
+    const bwg_seq_verdict_t verdict = bwg_seq_doc_judge(&doc, "a", true, 4, 5);
+
+    // Assert
+    ASSERT_EQ(verdict, BWG_SEQ_WRITE);
+}
+
+static void a_first_high_water_is_written_when_none_was_expected(void)
+{
+    // Arrange
+    const bwg_seq_doc_t doc = {0};
+
+    // Act
+    const bwg_seq_verdict_t verdict = bwg_seq_doc_judge(&doc, "a", false, 0, 1);
+
+    // Assert
+    ASSERT_EQ(verdict, BWG_SEQ_WRITE);
+}
+
+static void a_high_water_already_at_next_is_already_committed(void)
+{
+    // Arrange: a write landed, then its reply was lost, so the caller still expects the old value.
+    const bwg_seq_doc_t doc = doc_with_a_at(5);
+
+    // Act
+    const bwg_seq_verdict_t verdict = bwg_seq_doc_judge(&doc, "a", true, 4, 5);
+
+    // Assert
+    ASSERT_EQ(verdict, BWG_SEQ_ALREADY_COMMITTED);
+}
+
+static void a_high_water_that_moved_elsewhere_is_stale(void)
+{
+    // Arrange
+    const bwg_seq_doc_t doc = doc_with_a_at(7);
+
+    // Act
+    const bwg_seq_verdict_t verdict = bwg_seq_doc_judge(&doc, "a", true, 4, 5);
+
+    // Assert
+    ASSERT_EQ(verdict, BWG_SEQ_STALE);
+}
+
+static void a_high_water_that_appeared_unexpectedly_is_stale(void)
+{
+    // Arrange
+    const bwg_seq_doc_t doc = doc_with_a_at(3);
+
+    // Act
+    const bwg_seq_verdict_t verdict = bwg_seq_doc_judge(&doc, "a", false, 0, 5);
+
+    // Assert
+    ASSERT_EQ(verdict, BWG_SEQ_STALE);
+}
+
+static void an_expected_high_water_that_vanished_is_stale(void)
+{
+    // Arrange
+    const bwg_seq_doc_t doc = {0};
+
+    // Act
+    const bwg_seq_verdict_t verdict = bwg_seq_doc_judge(&doc, "a", true, 4, 5);
+
+    // Assert
+    ASSERT_EQ(verdict, BWG_SEQ_STALE);
+}
+
 void bwg_tests_seq_doc(void)
 {
     BWG_RUN(seq_doc_parses_what_it_encodes);
     BWG_RUN(seq_doc_rejects_invalid_documents);
     BWG_RUN(seq_doc_refuses_a_ninth_key);
+    BWG_RUN(a_high_water_moves_from_the_one_expected);
+    BWG_RUN(a_first_high_water_is_written_when_none_was_expected);
+    BWG_RUN(a_high_water_already_at_next_is_already_committed);
+    BWG_RUN(a_high_water_that_moved_elsewhere_is_stale);
+    BWG_RUN(a_high_water_that_appeared_unexpectedly_is_stale);
+    BWG_RUN(an_expected_high_water_that_vanished_is_stale);
 }

@@ -83,8 +83,8 @@ static bool parse_hello_payload(bwg_link_t *link, const uint8_t *payload, size_t
     bwg_str_t op;
     bwg_str_t nonce;
     bool ok = bwg_json_has_exact_fields(root, fields, 2, NULL, 0) &&
-              bwg_json_get_str(bwg_json_field(root, "op"), &op) && bwg_str_equals(op, "hello") &&
-              bwg_json_get_str(bwg_json_field(root, "hostNonce"), &nonce) &&
+              bwg_json_get_str(bwg_json_maybe_field(root, "op"), &op) && bwg_str_equals(op, "hello") &&
+              bwg_json_get_str(bwg_json_maybe_field(root, "hostNonce"), &nonce) &&
               bwg_b64url_is_canonical(nonce.ptr, nonce.len, BWG_NONCE_BYTES);
     if (ok) {
         memcpy(host_nonce, nonce.ptr, 43);
@@ -109,8 +109,8 @@ static bool is_clean_close(bwg_link_t *link, const bwg_record_t *record)
     bwg_str_t reason_text;
     bwg_reason_t reason;
     bool ok = bwg_json_has_exact_fields(root, fields, 2, NULL, 0) &&
-              bwg_json_get_str(bwg_json_field(root, "op"), &op) && bwg_str_equals(op, "close") &&
-              bwg_json_get_str(bwg_json_field(root, "reason"), &reason_text) &&
+              bwg_json_get_str(bwg_json_maybe_field(root, "op"), &op) && bwg_str_equals(op, "close") &&
+              bwg_json_get_str(bwg_json_maybe_field(root, "reason"), &reason_text) &&
               bwg_reason_parse(reason_text.ptr, reason_text.len, &reason);
     yyjson_doc_free(doc);
     return ok;

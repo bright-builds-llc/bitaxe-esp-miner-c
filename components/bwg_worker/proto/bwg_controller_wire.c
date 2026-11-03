@@ -40,16 +40,16 @@ static bool parse_controller_envelope(bwg_ctrl_request_t *request)
         return false;
     }
     bwg_str_t version;
-    if (!bwg_json_get_str(bwg_json_field(request->root, "protocolVersion"), &version) ||
+    if (!bwg_json_get_str(bwg_json_maybe_field(request->root, "protocolVersion"), &version) ||
         !bwg_str_equals(version, BWG_CONTROLLER_PROTOCOL) ||
-        !bwg_json_get_str(bwg_json_field(request->root, "requestId"), &request->request_id) ||
-        !bwg_json_get_str(bwg_json_field(request->root, "command"), &request->command)) {
+        !bwg_json_get_str(bwg_json_maybe_field(request->root, "requestId"), &request->request_id) ||
+        !bwg_json_get_str(bwg_json_maybe_field(request->root, "command"), &request->command)) {
         return false;
     }
     if (!request_id_is_valid(request->request_id)) {
         return false;
     }
-    yyjson_val *maybe_payload = bwg_json_field(request->root, "payload");
+    yyjson_val *maybe_payload = bwg_json_maybe_field(request->root, "payload");
     request->maybe_payload = yyjson_is_null(maybe_payload) ? NULL : maybe_payload;
     return true;
 }
@@ -73,7 +73,7 @@ bwg_ctrl_error_t bwg_ctrl_parse_frame(const bwg_controller_t *controller, const 
     if (!yyjson_is_obj(request->root) || !bwg_json_object_is_unique(request->root)) {
         return BWG_CTRL_INVALID_REQUEST;
     }
-    yyjson_val *maybe_profile = bwg_json_field(request->root, "profile");
+    yyjson_val *maybe_profile = bwg_json_maybe_field(request->root, "profile");
     if (maybe_profile != NULL) {
         request->is_possession = yyjson_is_str(maybe_profile);
         return request->is_possession && bwg_json_doc_is_unique(request->doc) ? BWG_CTRL_OK : BWG_CTRL_INVALID_REQUEST;

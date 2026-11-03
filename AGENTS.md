@@ -148,6 +148,9 @@ This is `bright-builds-llc/bitaxe-esp-miner-c`: upstream's firmware plus the own
   - `sdkconfig.defaults`: BLE off, the USB port free for the Gate's link, no BBPLL recalibration while it's in use, and core dumps to flash.
   - `test/CMakeLists.txt`: run `bwg_worker` tests.
 
+### Verification
+Before committing fork code, run `bash tools/run_bwg_host_tests.sh`, which builds `components/bwg_worker/proto` with its host tests plain and under sanitizers (it needs `pkg-config` and libsodium, and logs to `build/bwg_host_tests/`), then `bun scripts/bright-builds-check.ts all` and `idf.py build`. CI runs the host tests in `.github/workflows/bwg-host-tests.yml` with Linux gcc, which warns where macOS clang doesn't. Decisions in `main/bwg` belong in `proto/` with a host test, leaving the shell to gather facts and act on the verdict, as `proto/bwg_mining_rules.c` does.
+
 ### Evidence Rules
 - Every claim names its board, commit and evidence, and lists its non-claims. All earlier evidence is about Rust images, so each claim here earns its own.
 - Committed evidence is free of IPs, MACs, SSIDs, credentials, pool users, workers and endpoints. Test log redaction against real formats, since vendor Wi-Fi logs leak the SSID.

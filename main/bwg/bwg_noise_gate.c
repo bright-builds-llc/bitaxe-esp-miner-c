@@ -47,7 +47,7 @@ static uint16_t s_port;
 static uint8_t s_authority_key[AUTHORITY_KEY_BYTES];
 static uint64_t s_open_op_started_us;
 // What Noise says about a failed operation, read by the observer.
-static sv2_noise_ctx_t *s_noise;
+static sv2_noise_ctx_t *s_maybe_noise;
 
 static uint64_t now_us(void)
 {
@@ -93,7 +93,7 @@ static bool complete(bwg_noise_stage_t stage, bwg_noise_category_t category, uin
 
 static bwg_noise_detail_t detail_of_failure(void)
 {
-    switch (sv2_noise_last_failure(s_noise)) {
+    switch (sv2_noise_last_failure(s_maybe_noise)) {
     case SV2_NOISE_FAILURE_TIMEOUT:
         return BWG_NOISE_DETAIL_TIMEOUT;
     case SV2_NOISE_FAILURE_EOF:
@@ -199,7 +199,7 @@ static bool no_buffered_bytes(int fd)
 static void send_proof(esp_transport_handle_t transport)
 {
     static const uint8_t PROOF[] = {0xff, 0xff, 0xff, 0x00, 0x00, 0x00};
-    if (sv2_noise_send(s_noise, transport, PROOF, sizeof(PROOF)) != 0) {
+    if (sv2_noise_send(s_maybe_noise, transport, PROOF, sizeof(PROOF)) != 0) {
         fail(BWG_NOISE_STAGE_PROOF_WRITTEN, BWG_NOISE_CATEGORY_PROOF, BWG_NOISE_DETAIL_IO);
     }
 }
@@ -229,7 +229,7 @@ static void exchange(esp_transport_handle_t transport)
         return;
     }
     const int fd = esp_transport_get_socket(transport);
-    if (sv2_noise_handshake(s_noise, transport, s_authority_key) != 0) {
+    if (sv2_noise_handshake(s_maybe_noise, transport, s_authority_key) != 0) {
         // The observer named the operation that failed, and the first failure stays: this covers one that had none.
         fail(BWG_NOISE_STAGE_AUTHORITY_VERIFIED, BWG_NOISE_CATEGORY_AUTHENTICATION, BWG_NOISE_DETAIL_MALFORMED);
         return;
@@ -259,12 +259,12 @@ static void note_cleanup(void)
 static void worker_run(void)
 {
     const uint64_t started_us = now_us();
-    s_noise = sv2_noise_create();
+    s_maybe_noise = sv2_noise_create();
     esp_transport_handle_t transport = esp_transport_tcp_init();
-    if (s_noise == NULL || transport == NULL) {
+    if (s_maybe_noise == NULL || transport == NULL) {
         fail(BWG_NOISE_STAGE_NOISE_PREPARED, BWG_NOISE_CATEGORY_PREPARATION, BWG_NOISE_DETAIL_ALLOCATION);
     } else if (complete(BWG_NOISE_STAGE_NOISE_PREPARED, BWG_NOISE_CATEGORY_PREPARATION, started_us, BWG_NOISE_PREPARE_LIMIT_US, 0)) {
-        sv2_noise_set_observer(s_noise, &OBSERVER);
+        sv2_noise_set_observer(s_maybe_noise, &OBSERVER);
         exchange(transport);
     }
     note_cleanup();
@@ -274,9 +274,9 @@ static void worker_run(void)
         esp_transport_destroy(transport);
     }
     note_closed(closing_us);
-    if (s_noise != NULL) {
-        sv2_noise_destroy(s_noise);
-        s_noise = NULL;
+    if (s_maybe_noise != NULL) {
+        sv2_noise_destroy(s_maybe_noise);
+        s_maybe_noise = NULL;
     }
 }
 

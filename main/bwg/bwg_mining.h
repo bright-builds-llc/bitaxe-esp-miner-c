@@ -54,7 +54,7 @@ bool bwg_mining_release_to_local(void);
 bool bwg_mining_operator_paused(const GlobalState *GLOBAL_STATE);
 
 /** Why the device paused itself, or NULL. An operator's own pause has no reason. */
-const char *bwg_mining_pause_reason(const GlobalState *GLOBAL_STATE);
+const char *bwg_mining_maybe_pause_reason(const GlobalState *GLOBAL_STATE);
 
 /** One of paused, active, safe_blocked or stopping. */
 const char *bwg_mining_activity(const GlobalState *GLOBAL_STATE);

@@ -140,7 +140,7 @@ static void header_and_claim_shapes_are_rejected(void)
     snprintf(good_claims, sizeof(good_claims),
              "{\"controlSessionBindingSha256\":\"" AAAA_BINDING "\",\"operation\":\"start\",\"requestSha256\":\"%s\",\"sequence\":\"1\"}", digest);
     const char *good_header = "{\"alg\":\"Ed25519\",\"kid\":\"rfc8032\",\"typ\":\"bwg-worker-lease-authorization+jws\"}";
-    char spaced_claims[256];
+    char spaced_claims[sizeof(good_claims) + 1];
     snprintf(spaced_claims, sizeof(spaced_claims), "%s ", good_claims);
     char number_sequence[256];
     snprintf(number_sequence, sizeof(number_sequence),

@@ -10,7 +10,7 @@
 /** A restart needs fresh possession and an idle board with nothing left to clean up. */
 static bwg_ctrl_error_t require_evidence_idle(const bwg_controller_t *controller, uint64_t now_ms)
 {
-    if (bwg_ctrl_start_context(controller, now_ms) == NULL) {
+    if (bwg_ctrl_maybe_start_context(controller, now_ms) == NULL) {
         return BWG_CTRL_ADMISSION_REQUIRED;
     }
     if (controller->has_active || controller->cleanup_required || controller->has_cleanup_reason ||
@@ -31,9 +31,9 @@ static bwg_ctrl_error_t prepare_boot_end(bwg_controller_t *controller, const bwg
     uint64_t expected = 0;
     if (maybe_context == NULL || !has_effect || request->maybe_payload == NULL ||
         !bwg_json_has_exact_fields(request->maybe_payload, REQUIRED, 2, NULL, 0) ||
-        !bwg_json_get_str(bwg_json_field(request->maybe_payload, "requestNonce"), &nonce) ||
+        !bwg_json_get_str(bwg_json_maybe_field(request->maybe_payload, "requestNonce"), &nonce) ||
         !bwg_b64url_is_canonical(nonce.ptr, nonce.len, REQUEST_NONCE_BYTES) ||
-        !bwg_json_get_u64(bwg_json_field(request->maybe_payload, "expectedBootOrdinal"), &expected) || expected == 0 ||
+        !bwg_json_get_u64(bwg_json_maybe_field(request->maybe_payload, "expectedBootOrdinal"), &expected) || expected == 0 ||
         expected > MAX_SAFE_BOOT_ORDINAL) {
         return BWG_CTRL_INVALID_REQUEST;
     }
@@ -183,7 +183,7 @@ bwg_ctrl_error_t bwg_ctrl_prepare_cadence_arm(bwg_controller_t *controller, cons
     bwg_cadence_phase_t phase;
     if (ops->maybe_cadence_arm == NULL || request->maybe_payload == NULL ||
         !bwg_json_has_exact_fields(request->maybe_payload, REQUIRED, 1, NULL, 0) ||
-        !parse_phase(bwg_json_field(request->maybe_payload, "phase"), &phase)) {
+        !parse_phase(bwg_json_maybe_field(request->maybe_payload, "phase"), &phase)) {
         return BWG_CTRL_INVALID_REQUEST;
     }
     const bwg_ctrl_error_t idle = require_evidence_idle(controller, now_ms);

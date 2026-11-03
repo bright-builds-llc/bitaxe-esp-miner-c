@@ -37,6 +37,18 @@ bool bwg_seq_doc_get(const bwg_seq_doc_t *doc, const char *kid, uint64_t *sequen
 /** Sets the high water for `kid`, keeping order. False for an invalid key, a zero value, or a ninth key. */
 bool bwg_seq_doc_put(bwg_seq_doc_t *doc, const char *kid, uint64_t sequence);
 
+typedef enum {
+    BWG_SEQ_WRITE = 0,
+    /** `next` is already the high water, so a write that landed before a failed reply needs nothing more. */
+    BWG_SEQ_ALREADY_COMMITTED,
+    /** The high water isn't the one the caller expected, so it moved, or it never existed. */
+    BWG_SEQ_STALE,
+} bwg_seq_verdict_t;
+
+/** Whether `kid`'s high water may move to `next`, given what the caller read before (`has_expected`, `expected`). */
+bwg_seq_verdict_t bwg_seq_doc_judge(const bwg_seq_doc_t *doc, const char *kid, bool has_expected, uint64_t expected,
+                                    uint64_t next);
+
 /** Whether two documents hold the same entries. */
 bool bwg_seq_doc_equal(const bwg_seq_doc_t *left, const bwg_seq_doc_t *right);
 

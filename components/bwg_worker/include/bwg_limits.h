@@ -4,8 +4,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define BWG_SAFE_SAMPLE_MAX_AGE_MS 1000
-
 /** A board's lease limits (ADR-0037, ADR-0041 in the Rust firmware). They apply only during a lease. */
 typedef struct {
     uint16_t frequency_min_mhz;
