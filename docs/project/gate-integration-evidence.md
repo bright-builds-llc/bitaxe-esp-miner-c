@@ -243,10 +243,14 @@ Everything in this section is about this image on this board, recorded 2026-11-0
 
 The log line now names all three. On a test image of this source plus that change (`esp-miner.bin` SHA-256 starts `2f9137085f39dff6`), a pool that never answers and a pool that sends no job each logged "chip ready 1, work received 0", with a sample age of 22 and 33 ms. Those are made failures, so they show the line works and say nothing about the real pool's case. No image with the line has met that case, and the run above is from the image without it.
 
+The same test image then took 15 more Starts from the real pool, each a `lease_stop` right after `reboot`. All 15 reached work, none logged the line, and their stops took 19,517 to 19,868 ms. With the 5 above, that's 20 passes since the one timeout, so repeating further is a poor way to catch it. The line stays in the image for the next time it happens.
+
+**The long cooling.** The `mining` lease that needed 35,999 ms of cooling was already hot before its stop. Its fan held 7,725 rpm and its chip settled at 66 °C on about 13.4 W. Three repeats of the same length on the test image held 60 to 61 °C at about 4,600 to 5,200 rpm on about 12.4 W. They cooled in 10,999 to 12,004 ms and stopped in 27,371 to 28,468 ms, with 15 or 16 accepted and 0 rejected. Each stop had its fan near full speed, 7,769 to 8,095 rpm by its end, so the slow proof came from the board shedding less heat in that lease, not from the fan or the stop. Why it shed less wasn't established, since the board reads neither ambient temperature nor airflow and nobody was watching it. It had passed by the `soak` about 30 minutes later, which peaked at 61 °C.
+
 Non-claims for this run:
 
 - **Runs:** the checks above ran once on this image, in one sitting, except where a row says otherwise.
-- **Stop length:** stops here took 19 to 53 s, longer than the 601's fixed proof in the worst case and 23 s longer than the earlier `mining` stop on this board. The long ones spent up to 36 s cooling to the proof's limit. Why the `mining` stop needed about three times the cooling of the same-length `lost_once` lease wasn't established.
+- **Stop length:** stops here took 19 to 53 s, longer than the 601's fixed proof in the worst case and 23 s longer than the earlier `mining` stop on this board. The long ones spent up to 36 s cooling to the proof's limit, and "The long cooling" above says what's known about the longest.
 - **Not repeated:** the silent chip and failed-start pacing need a temporary test image, and their rows above are from earlier images. Those code paths didn't change.
 - **Pool faults:** the 601's non-claims on test pools apply here too. A pool that stops reading was exercised on V1 only for its failed send, as on the 601.
 - **Comparison:** the 601's `trace` dropped 1 event and this board's dropped 0, but with one run each that doesn't say why.

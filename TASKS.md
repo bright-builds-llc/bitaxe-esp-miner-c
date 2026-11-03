@@ -2,10 +2,6 @@
 
 The fork's list of open work, one line per item: its state, what unblocks it, and where the detail lives. Detail stays in that doc rather than here. Delete an item when it's done, since git keeps the history.
 
-## Next
-
-- `task-start-no-work`: a Start on the 205 waited its 25 s for work from a real pool and timed out once, then passed 5 of 5. The log line now names its three conditions, so the next step is to read that line when it happens again on an image that has it. See "A Start that reached no work" in `docs/project/gate-integration-evidence.md`.
-
 ## Waiting on the owner
 
 - `task-gate-bm1370-chip-ids`: the Gate's V2 parser refuses `coreId` above 111 and `smallCoreId` above 7, and most of the 601's V2 share attempts stop with `v2_evidence_invalid`. The fix belongs in the Gate repository. See "Gamma 601" in `docs/project/gate-integration-evidence.md`.
@@ -26,6 +22,7 @@ The fork's list of open work, one line per item: its state, what unblocks it, an
 ## Unexplained results
 
 - `task-unanswered-pool-205`: the test pool's full backlog answered or reset new connections on the 205's run, where on the 601 they timed out, so connections that time out are unproven on the 205. See "The 205 on `f7139ad`" in `docs/project/gate-integration-evidence.md`.
-- `task-long-cooling-205`: one 313 s lease on the 205 needed 36 s of cooling, and another of the same length needed 12 s. See "The 205 on `f7139ad`" in `docs/project/gate-integration-evidence.md`.
+- `task-start-no-work`: a Start on the 205 waited its 25 s for work from a real pool and timed out once, then passed 20 of 20. The log line now names its three conditions, so read that line if it happens again. See "A Start that reached no work" in `docs/project/gate-integration-evidence.md`.
+- `task-long-cooling-205`: one 313 s lease on the 205 ran at 66 °C with its fan at 7,725 rpm and needed 36 s of cooling. Four others of that length held about 60 °C and needed about 12 s. The board shed less heat in that lease, and why isn't known. See "The long cooling" in `docs/project/gate-integration-evidence.md`.
 - `task-second-reconnect`: one of the 601's closed-connection runs reconnected again 28 s after the fault, and three later runs didn't. See "Gamma 601" in `docs/project/gate-integration-evidence.md`.
 - `task-dropped-trace-event`: `trace` read `droppedEvents` 1 on `1a6b464`, where the image before it read 0, and the event wasn't identified. See "Gamma 601" in `docs/project/gate-integration-evidence.md`.
