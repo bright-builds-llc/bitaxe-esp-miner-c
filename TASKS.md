@@ -4,7 +4,7 @@ The fork's list of open work, one line per item: its state, what unblocks it, an
 
 ## Waiting on the owner
 
-- `task-real-overheat`: a real overheat needs the owner's say-so, as it risks damage. A pulled cable and a power loss ran on the 601. See "Faults at the board" in `docs/project/gate-integration-evidence.md`.
+Nothing at the moment.
 
 ## Deferred
 
