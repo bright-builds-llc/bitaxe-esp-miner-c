@@ -381,5 +381,9 @@ const char *bwg_mining_activity(const GlobalState *GLOBAL_STATE)
     if (system->hardware_fault || system->overheat_mode || system->pools_unavailable || bwg_local_guard_backing_off()) {
         return "safe_blocked";
     }
+    // A lease mines from a paused board, and the pause only returns once the lease ends.
+    if (snapshot.state == BWG_AUTHORITY_LEASED && snapshot.first_work_ms != 0) {
+        return "active";
+    }
     return bwg_mining_operator_paused(GLOBAL_STATE) || snapshot.state == BWG_AUTHORITY_STOPPED ? "paused" : "active";
 }

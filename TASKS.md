@@ -4,7 +4,7 @@ The fork's list of open work, one line per item: its state, what unblocks it, an
 
 ## Waiting on the owner
 
-- `task-faults-at-the-board`: a pulled cable and a power loss need the owner at the board or a switchable supply. A real overheat needs the owner's say-so, as it risks damage.
+- `task-real-overheat`: a real overheat needs the owner's say-so, as it risks damage. A pulled cable and a power loss ran on the 601. See "Faults at the board" in `docs/project/gate-integration-evidence.md`.
 
 ## Deferred
 
@@ -21,4 +21,5 @@ The fork's list of open work, one line per item: its state, what unblocks it, an
 - `task-start-no-work`: a Start on the 205 waited its 25 s for work from a real pool and timed out once, then passed 20 of 20. The log line now names its three conditions, so read that line if it happens again. See "A Start that reached no work" in `docs/project/gate-integration-evidence.md`.
 - `task-long-cooling-205`: one 313 s lease on the 205 ran at 66 °C with its fan at 7,725 rpm and needed 36 s of cooling. Four others of that length held about 60 °C and needed about 12 s. The board shed less heat in that lease, and why isn't known. See "The long cooling" in `docs/project/gate-integration-evidence.md`.
 - `task-second-reconnect`: 2 of the 601's 22 closed-connection runs connected a third time. The one examined followed about 9 s in which the board's whole network path went silent while its USB link carried on, so reconnecting was right. Why the path went silent isn't known. If it happens again, read the board's own log (`/api/system/logs`) soon after. See "The second reconnect" in `docs/project/gate-integration-evidence.md`.
+- `task-power-loss-readings`: in its last reading before a power loss on the 601, the board read 81 °C and 16.2 W, up from 51 °C and 13.5 W a second before, as its input sagged. Whether the readings were real isn't known. See "Faults at the board" in `docs/project/gate-integration-evidence.md`.
 - `task-white-screen-601`: a one-off so far. After a power-on on `1a6b464`, the 601's display stayed solid white while the board otherwise ran normally, and a software restart cleared it. It wasn't power-cycled again, so a cold start is only a suspect. Look again if it comes back.

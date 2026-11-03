@@ -362,6 +362,18 @@ On the Gamma 601, that build of `57d7be9` (`esp-miner.bin` SHA-256 starts `8f047
 
 The owner then ran the harness's `lease_stop` on the same image with their own Work Lease key, through a script that checked the key was one the image trusts and put the test image back afterwards, so no agent used the key. Admitted on the first attempt, the Start replied in 10,267 ms, the renewal 20 s later was accepted, and in 47 s of mining the board submitted 7 shares, with 7 accepted and none rejected, and every one of 27 nonces matched the expected filter. The operator stop replied in 47,568 ms with the safe stop complete at `fan_paused`, the reason `restoration_requested` and the restoration confirmed as `paused`, the 601's usual stop of tail and cooling proof. An earlier try ended at Ctrl-C 43 s into its stop, after the same Start, renewal and mining. Non-claims: one lease, through the harness and not the owner's Gate page. The 205 wasn't run. The capabilities name no commit and were signed before this tree existed, so a later manifest change needs new signatures.
 
+## Faults at the board
+
+On 2026-11-03, on the Gamma 601 with the `f7139ad` test image (`esp-miner.bin` SHA-256 starts `0f00cabc8b275445`) and the test authority, the owner pulled the USB cable and then the power supply during a lease, with the Gate at `eb6a770`. A private copy of `tools/bwg_gate/gate_host.ts` kept each lease renewed until its link went, then reconnected and read the board, while a second process logged the board's HTTP state once a second over Wi-Fi.
+
+**Pulled cable.** About 30 s into a lease, the data cable came out, with the board still powered and on Wi-Fi. The board closed its gate 2,800 ms after its last valid heartbeat and began its stop 38 ms later, with the reason `heartbeat_timeout`, inside the 3,000 ms limit. Its HTTP state read `stopping` about 4 s after the pull and `paused` about 48 s later, at 5.0 W, the 601's usual stop. The cable went back in 18 s after the pull. Three reconnects timed out at Hello while the stop ran, and the fourth, 61 s after the pull, found the safe stop complete at `fan_paused` and the restoration confirmed as `connectivity_lost`.
+
+**Power loss.** About 40 s into another lease, the power supply came out with the cable still in. The USB link went at once, as the board has no other supply, and HTTP stopped answering about a second later. In its last reading the board read `stopping`, with the chip at 81 °C against 51 °C a second before, 16.2 W against 13.5 W and the input at 5.18 V against 5.24 V. After the power returned, the board booted with reset cause `power_on`, paused with the ASIC off at 5.0 W, `mineOnBoot` 0 and no pause reason. The Gate connected on its first attempt and found generation 0, the baseline and the restoration confirmed as `reboot`.
+
+Non-claims: one run of each, on the 601 only. Whether those last readings were real or came from the collapsing supply isn't known, and nor is which ended the chip's work first, the stop or the power. The board's own log was lost with the power. A real overheat wasn't run.
+
+**`miningActivity` during a lease.** The HTTP log showed this tree reporting `paused` all through a lease that started from a paused board, while the chip hashed at 13.7 W, because the local pause is held for when the lease ends. Rust reports `active` once a pool's work is queued. The label now reads `active` while a lease is in force and has had its first work. On the 601, a test-authority build of `0df71f3` with that change, `esp-miner.bin` SHA-256 starting `6d1e14edb355072d`, read `paused`, then `active` from 11 s, as the Start replied in 10,200 ms, then `stopping` at the operator stop and `paused` after it, with 5 shares accepted. Non-claims: one lease, and the change is uncommitted, so that image reports `-dirty`. A local pause and resume weren't rerun, though the change applies only while a lease is in force.
+
 ## Differences from Rust
 
 By decision:
@@ -397,7 +409,7 @@ Local mining policy, where it differs from Rust's:
 
 ## Non-claims
 
-- **Hardware not run:** a pulled cable, a power loss and a real overheat were not exercised on either board. USB re-enumeration leaves the chip powered, so it stands in for a pulled cable from the board's side only.
+- **Hardware not run:** a real overheat was not exercised on either board, and a pulled cable and a power loss ran on the 601 only, once each. See "Faults at the board".
 - **Trust:** this image holds a test authority. "Reference firmware under the owner's capability" has the build that holds the owner's.
 - **Judges:** Rust's full operator and install judges bind Rust's source, and nothing C-aware replaces them yet, so `noise_judge.mjs` and `v2_judge.mjs` use only its pure protocol judges and prove less. Rust's share judge predates ADR-0037's amendment, so `v2_judge.mjs` shows it the reported headroom minus the old 15,550 ms reserve.
 - **Restart guard:** its count lives in RAM, so a reboot starts over. Its hashing clock can include time spent cooling after an overheat. After a backoff ends, the next run can wait up to one more probe interval.
