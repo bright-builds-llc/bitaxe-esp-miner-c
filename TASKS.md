@@ -4,9 +4,7 @@ The fork's list of open work, one line per item: its state, what unblocks it, an
 
 ## Waiting on the owner
 
-- `task-core-dump-exposure`: decide whether dumps may stay in on-device flash, since their task stacks may hold pool credentials. See "Non-claims" in `docs/project/gate-integration-evidence.md`.
-- `task-reference-firmware`: decide whether to call an image reference firmware under the owner's signed capability. Images hold a test authority until then. See "Non-claims" in `docs/project/gate-integration-evidence.md`.
-- `task-start-readiness`: rule on a Start waiting for first work, up to 25 s, where Rust's source reports running once a pool authorizes. See "Differences from Rust" in `docs/project/gate-integration-evidence.md`.
+- `task-reference-firmware`: a reference build of `57d7be9`, with the owner's public trust and the capabilities already signed for Rust, passed the Gate's admission on the 601. A lease on it needs the owner's Gate and Work Lease key. The image is in the private `reference/` directory. See "Reference firmware under the owner's capability" in `docs/project/gate-integration-evidence.md`.
 - `task-faults-at-the-board`: a pulled cable and a power loss need the owner at the board or a switchable supply. A real overheat needs the owner's say-so, as it risks damage.
 
 ## Deferred

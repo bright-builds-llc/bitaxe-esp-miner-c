@@ -354,12 +354,19 @@ Non-claims for this board:
 
 An earlier version of this file said the owner forbade core dumps, that Close matched Rust, and that the telemetry priority should stay at 2. All three were wrong: the first had no source beyond that file, the second hid a bug in this tree, and the third gave up a check the Gate makes.
 
+## Reference firmware under the owner's capability
+
+On 2026-11-03 the owner chose to make a reference image. A Gate capability signs no image: the owner's Update Authority signs a board, a firmware name and version, and the SHA-256 of the Worker Serial manifest, and the Gate pins the image itself by its source commit and ELF digest. The owner's capabilities for the 205 and the 601, already signed for the Rust image and public in the Rust repository's `firmware/bitaxe/bwg/`, name `bright-builds-reference-firmware` 0.1.0, the only name the Gate's trust contract allows, and bind manifest digest `a43c2c7d61f95fc6`. This tree's `BWG_SERIAL_MANIFEST_JSON` hashes to the same digest, and both signatures verify against the owner's public trust. So the C image needs no new signature: built with `BWG_TRUST_DIR` holding that trust and those two capabilities, it is reference firmware.
+
+On the Gamma 601, that build of `57d7be9` (`esp-miner.bin` SHA-256 starts `8f0472df47605b9c`, ELF `46c4a0b1cded501f`) held the owner's key IDs and the 601's signed capability and none of the test authority's. The Gate's admission at `eb6a770`, given only the owner's public trust and that commit and ELF, admitted the board on its first attempt and read its baseline. Given the test authority's trust instead, it refused the board at the `capability` stage. The 601 was then returned to the `f7139ad` test image. Non-claims: no lease ran, since a Start needs the owner's Work Lease key, which agents don't use. The 205 wasn't run. The capabilities name no commit and were signed before this tree existed, so a later manifest change needs new signatures.
+
 ## Differences from Rust
 
 By decision:
 
 - **Pause during a lease:** ends the lease here. Rust keeps mining until the lease ends. A pause is the operator's direct request, so it stops the work.
 - **Resume during a lease from a paused board:** the pause still returns afterwards, because the resume can't be told apart from the lease's own running state.
+- **A Start's readiness:** here the board waits for its first work, up to 25 s, and a pool that authorizes and sends no job fails the Start. From its source, Rust reports running once a V1 pool authorizes or a V2 channel opens, without waiting for work, but Rust wasn't run against such a pool. The owner kept this on 2026-11-03, since first work proves the pool and chip path.
 
 Not in this image, and required by no Gate path:
 
@@ -372,7 +379,6 @@ Not in this image, and required by no Gate path:
 By construction, each small and stated so nobody relies on it:
 
 - **Pool retries in a lease:** here 3 attempts come 2 s apart, and a connection that had work clears the count. From its source, Rust waits 5 s between 3 attempts, about 15 s when refused, and its count carries across connections. Rust wasn't run this way. Rust also blocks dispatch as soon as the pool is lost, where this chip keeps hashing the old job until the stop, with its shares refused.
-- **A Start's readiness:** here the board waits for its first work, up to 25 s, and a pool that authorizes and sends no job fails the Start. From its source, Rust reports running once a V1 pool authorizes or a V2 channel opens, without waiting for work, but Rust wasn't run against such a pool. This was kept because first work proves the pool and chip path. The owner hasn't ruled on it.
 - **V2 record times:** the revoked, shutdown and cooled event times are when the owner task noted them. The true times are in the qualification atoms.
 - **Block check:** `is_block` is masked during an attempt, since the fixture's target is easy.
 - **Act One:** it's built inside the handshake after connect, where Rust builds it before connect.
@@ -390,11 +396,11 @@ Local mining policy, where it differs from Rust's:
 ## Non-claims
 
 - **Hardware not run:** a pulled cable, a power loss and a real overheat were not exercised on either board. USB re-enumeration leaves the chip powered, so it stands in for a pulled cable from the board's side only.
-- **Trust:** this image holds a test authority. Calling it reference firmware under the owner's signed capability is the owner's decision.
+- **Trust:** this image holds a test authority. "Reference firmware under the owner's capability" has the build that holds the owner's.
 - **Judges:** Rust's full operator and install judges bind Rust's source, and nothing C-aware replaces them yet, so `noise_judge.mjs` and `v2_judge.mjs` use only its pure protocol judges and prove less. Rust's share judge predates ADR-0037's amendment, so `v2_judge.mjs` shows it the reported headroom minus the old 15,550 ms reserve.
 - **Restart guard:** its count lives in RAM, so a reboot starts over. Its hashing clock can include time spent cooling after an overheat. After a backoff ends, the next run can wait up to one more probe interval.
 - **Duration:** the longest lease here is the 600 s soak. Nothing supports a claim about unbounded mining.
-- **Core dumps:** a dump holds task stacks, which may hold pool credentials, in on-device flash. `CONFIG_ESP_COREDUMP_FLASH_NO_OVERWRITE` refuses a second dump until the partition is erased. Devices updated over the air keep their old 64K partition, because the partition table doesn't change that way.
+- **Core dumps:** a dump holds task stacks, which may hold pool credentials, in on-device flash. `CONFIG_ESP_COREDUMP_FLASH_NO_OVERWRITE` refuses a second dump until the partition is erased. Devices updated over the air keep their old 64K partition, because the partition table doesn't change that way. The owner kept dumps in flash on 2026-11-03.
 - **Heartbeats before activation:** a lease whose heartbeats stop just before it activates can close sooner than 2,800 ms after activation, because activation counts as a heartbeat stamp and the link's poll counts from the earlier real one. It's an early, safe close.
 - **Overheat detail:** the overheat path and the `unsafe_sample` facts of `worker_revocation_detail` are host-tested only.
 - **Secrets:** the pool client's transient copies of grant credentials are not wiped. Grant fields over 255 bytes are refused, although the signed limit is 512.

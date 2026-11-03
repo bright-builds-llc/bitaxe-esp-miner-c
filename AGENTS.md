@@ -113,6 +113,9 @@ This is `bright-builds-llc/bitaxe-esp-miner-c`: upstream's firmware plus the own
 - **BLE:** off in fork builds until the secured design (`task-secured-ble-provisioning`) exists.
 - **Device identity:** keep the `bwg_worker` NVS key names and formats, so devices keep their identity.
 - **Licence:** GPL-3.0 as a whole, with upstream's notices kept. Code or text moved from the Rust repository keeps its MIT notice. Review source and notice obligations before distributing an image.
+- **Core dumps (2026-11-03):** keep them in on-device flash, although a dump's task stacks may hold pool credentials.
+- **Start readiness (2026-11-03):** a Start reports running only after first work, up to 25 s, where Rust reports it once a pool authorizes.
+- **Reference firmware (2026-11-03):** a reference image embeds the owner's public trust and signed capabilities. Only the owner signs, and agents never use the owner's private keys.
 
 ### Sync Policy
 - Put extensions in new components, such as `components/bwg_worker`, with narrow hooks in upstream files.
