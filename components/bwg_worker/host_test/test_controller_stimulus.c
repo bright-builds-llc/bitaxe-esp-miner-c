@@ -65,7 +65,7 @@ static void an_armed_stimulus_makes_one_tick_stop_the_lease(void)
     ASSERT_FALSE(bwg_controller_has_active_lease(&rig.controller));
     ASSERT_EQ(rig.controller.stimulus.state, BWG_CLOCK_STIMULUS_CONSUMED);
     ASSERT_EQ(rig.controller.clock_discontinuities, 1u);
-    ASSERT_EQ(rig.controller.restoration_reason, BWG_REASON_MONOTONIC_RESET);
+    ASSERT_EQ(bwg_ctrl_lifecycle_restoration(&rig.controller.lifecycle).reason, BWG_REASON_MONOTONIC_RESET);
     rig_close(&rig);
 }
 

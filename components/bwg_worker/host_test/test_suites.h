@@ -43,5 +43,6 @@ void bwg_tests_restart_guard(void);
 void bwg_tests_core_dump_receipt(void);
 void bwg_tests_preparation_receipt(void);
 void bwg_tests_mining_rules(void);
+void bwg_tests_ctrl_lifecycle(void);
 
 #endif // BWG_TEST_SUITES_H

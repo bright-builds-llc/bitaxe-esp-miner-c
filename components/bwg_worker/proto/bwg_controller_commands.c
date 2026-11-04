@@ -33,7 +33,7 @@ static bwg_ctrl_error_t prepare_possession(bwg_controller_t *controller, const b
     if (!bwg_possession_matches(&possession, controller->capability_digest, controller->manifest_digest,
                                 &controller->binding) ||
         seen_nonce(controller, digest) || controller->seen_count >= BWG_CONTROLLER_MAX_SEEN_NONCES ||
-        controller->has_pending_token || controller->has_active) {
+        controller->has_pending_token || bwg_ctrl_lifecycle_maybe_lease(&controller->lifecycle) != NULL) {
         return BWG_CTRL_INVALID_PROOF;
     }
     bwg_ctrl_error_t error = bwg_ctrl_acknowledge_boot(controller);
@@ -70,12 +70,6 @@ static bool deadlines_from_window(uint64_t now_ms, uint64_t duration_ms, uint64_
     return true;
 }
 
-static void copy_id(char *out, bwg_str_t id)
-{
-    memcpy(out, id.ptr, id.len);
-    out[id.len] = '\0';
-}
-
 /** Past this point a status is the only thing left, and the buffer exists, so it cannot run out of memory. */
 static bwg_ctrl_error_t finish_status(bwg_controller_t *controller, bwg_ctrl_outcome_t *outcome, bwg_jw_t *writer,
                                       uint64_t now_ms)
@@ -102,8 +96,7 @@ static bwg_ctrl_error_t prepare_start(bwg_controller_t *controller, const bwg_ct
         bwg_ctrl_note_context_rejection(controller, BWG_AUTH_OPERATION_START);
         return BWG_CTRL_ADMISSION_REQUIRED;
     }
-    if (controller->has_active || controller->has_cleanup_reason || controller->boot_clear_required ||
-        controller->restoration == BWG_RESTORATION_PENDING || bwg_ctrl_attempt_busy(controller)) {
+    if (!bwg_ctrl_lifecycle_is_quiet(&controller->lifecycle) || bwg_ctrl_attempt_busy(controller)) {
         return BWG_CTRL_INVALID_TRANSITION;
     }
     if (!bwg_lease_grant_validate(&grant)) {
@@ -130,17 +123,12 @@ static bwg_ctrl_error_t prepare_start(bwg_controller_t *controller, const bwg_ct
     if (!controller->ops.effect_set(controller->ops.ctx, BWG_EFFECT_PENDING)) {
         return BWG_CTRL_PERSISTENCE_FAILED;
     }
-    controller->cleanup_required = true;
-    controller->has_active = true;
-    copy_id(controller->lease_id, grant.lease_id);
-    copy_id(controller->challenge_id, grant.challenge_id);
-    controller->deadlines = deadlines;
-    controller->lease_exact_window = grant.allowance.kind == BWG_ALLOWANCE_SOAK || grant.stratum_kind == BWG_STRATUM_V2;
+    const bool exact_window = grant.allowance.kind == BWG_ALLOWANCE_SOAK || grant.stratum_kind == BWG_STRATUM_V2;
+    bwg_ctrl_lifecycle_start_lease(&controller->lifecycle, grant.lease_id, grant.challenge_id, deadlines, exact_window);
     if (grant.stratum_kind == BWG_STRATUM_V2) {
         controller->has_v2_generation = true;
         controller->v2_generation = controller->generation;
     }
-    controller->restoration = BWG_RESTORATION_PENDING;
     if (!controller->ops.start(controller->ops.ctx, &grant, deadlines)) {
         return stop_then(controller, now_ms, BWG_CTRL_SESSION_FAILED);
     }
@@ -159,22 +147,23 @@ static bwg_ctrl_error_t prepare_renew(bwg_controller_t *controller, const bwg_ct
         bwg_ctrl_note_context_rejection(controller, BWG_AUTH_OPERATION_RENEW);
         return BWG_CTRL_ADMISSION_REQUIRED;
     }
+    const bwg_ctrl_lease_t *maybe_lease = bwg_ctrl_lifecycle_maybe_lease(&controller->lifecycle);
     if (!bwg_lease_renewal_validate(&renewal) ||
-        (controller->lease_exact_window &&
+        (maybe_lease != NULL && maybe_lease->exact_window &&
          (renewal.duration_ms != BWG_SOAK_DURATION_MS || renewal.renew_after_ms != BWG_SOAK_RENEW_AFTER_MS))) {
         return BWG_CTRL_INVALID_REQUEST;
     }
-    if (!controller->has_active) {
+    if (maybe_lease == NULL) {
         return BWG_CTRL_INVALID_TRANSITION;
     }
     bwg_jw_t writer;
     if (!bwg_ctrl_reply_open(controller, outcome, request->request_id, BWG_CONTROLLER_STATUS_MAX_BYTES, &writer)) {
         return stop_then(controller, now_ms, BWG_CTRL_SESSION_FAILED);
     }
-    if (!bwg_str_equals(renewal.lease_id, controller->lease_id)) {
+    if (!bwg_str_equals(renewal.lease_id, maybe_lease->lease_id)) {
         return stop_then(controller, now_ms, BWG_CTRL_AUTHENTICATION_FAILED);
     }
-    if (bwg_ctrl_verify_renew(controller, &renewal, maybe_binding) != BWG_AUTH_ACCEPTED) {
+    if (bwg_ctrl_verify_renew(controller, &renewal, maybe_lease->challenge_id, maybe_binding) != BWG_AUTH_ACCEPTED) {
         // Attributed first, so the record doesn't depend on how the stop goes.
         bwg_rejection_log_attribute_stop(&controller->rejections, BWG_REASON_CONTROL_FAILED);
         return stop_then(controller, now_ms, BWG_CTRL_AUTHENTICATION_FAILED);
@@ -186,7 +175,7 @@ static bwg_ctrl_error_t prepare_renew(bwg_controller_t *controller, const bwg_ct
     if (!controller->ops.renew(controller->ops.ctx, &renewal, deadlines)) {
         return stop_then(controller, now_ms, BWG_CTRL_SESSION_FAILED);
     }
-    controller->deadlines = deadlines;
+    bwg_ctrl_lifecycle_renew_lease(&controller->lifecycle, deadlines);
     return finish_status(controller, outcome, &writer, now_ms);
 }
 
@@ -224,11 +213,11 @@ static bwg_ctrl_error_t prepare_restore(bwg_controller_t *controller, const bwg_
 static bwg_ctrl_error_t prepare_status(bwg_controller_t *controller, const bwg_ctrl_request_t *request,
                                        uint64_t now_ms, bwg_ctrl_outcome_t *outcome)
 {
-    if (bwg_ctrl_attempt_busy(controller) && (!controller->has_active || controller->has_cleanup_reason)) {
+    if (bwg_ctrl_attempt_busy(controller) && bwg_ctrl_lifecycle_maybe_running_lease(&controller->lifecycle) == NULL) {
         return BWG_CTRL_RESTORATION_PENDING;
     }
     bwg_ctrl_error_t error = reply_with_status(controller, request, now_ms, outcome);
-    if (error == BWG_CTRL_OK && controller->boot_clear_required && !controller->has_active) {
+    if (error == BWG_CTRL_OK && bwg_ctrl_lifecycle_reboot_due(&controller->lifecycle)) {
         outcome->effect.kind = BWG_CTRL_EFFECT_BOOT_REPORTED;
         outcome->effect.generation = controller->generation;
     }
@@ -271,7 +260,7 @@ static bwg_ctrl_error_t prepare_probe(bwg_controller_t *controller, const bwg_ct
     if (bwg_ctrl_maybe_start_context(controller, now_ms) == NULL) {
         return BWG_CTRL_ADMISSION_REQUIRED;
     }
-    if (controller->has_active || controller->cleanup_required) {
+    if (bwg_ctrl_lifecycle_holds_effect(&controller->lifecycle)) {
         return BWG_CTRL_INVALID_TRANSITION;
     }
     if (!padding_is_fixed_pattern(padding)) {

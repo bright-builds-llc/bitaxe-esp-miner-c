@@ -94,9 +94,7 @@ static bool absorb_boot_marker(bwg_controller_t *controller)
     if (state == BWG_EFFECT_PENDING && !controller->ops.effect_set(controller->ops.ctx, BWG_EFFECT_REBOOT_CONFIRMED)) {
         return false;
     }
-    controller->boot_clear_required = true;
-    controller->restoration = BWG_RESTORATION_CONFIRMED;
-    controller->restoration_reason = BWG_REASON_REBOOT;
+    bwg_ctrl_lifecycle_find_reboot(&controller->lifecycle);
     return true;
 }
 
@@ -154,7 +152,7 @@ static void invalidate_session(bwg_controller_t *controller)
     controller->has_admission = false;
     controller->has_pending_token = false;
     controller->restart_consumed = false;
-    controller->has_boot_report_generation = false;
+    bwg_ctrl_lifecycle_forget_reboot_report(&controller->lifecycle);
     controller->has_v2_observation = false;
     controller->has_noise_observation = false;
     controller->seen_count = 0;
@@ -163,7 +161,7 @@ static void invalidate_session(bwg_controller_t *controller)
 
 bwg_ctrl_error_t bwg_controller_begin_session(bwg_controller_t *controller, const bwg_session_binding_t *binding)
 {
-    if (controller->has_active || controller->cleanup_required) {
+    if (bwg_ctrl_lifecycle_holds_effect(&controller->lifecycle)) {
         return BWG_CTRL_INVALID_TRANSITION;
     }
     invalidate_session(controller);
@@ -177,10 +175,8 @@ bwg_ctrl_error_t bwg_ctrl_safe_stop(bwg_controller_t *controller, bwg_reason_t r
     controller->has_admission = false;
     controller->has_pending_token = false;
     bwg_clock_stimulus_cancel(&controller->stimulus);
-    controller->has_cleanup_reason = true;
-    controller->cleanup_reason = reason;
-    controller->restoration = BWG_RESTORATION_PENDING;
-    if (controller->has_active || controller->cleanup_required) {
+    if (bwg_ctrl_lifecycle_holds_effect(&controller->lifecycle)) {
+        bwg_ctrl_lifecycle_begin_stop(&controller->lifecycle, reason);
         if (!controller->ops.safe_stop(controller->ops.ctx, reason)) {
             return BWG_CTRL_SESSION_FAILED;
         }
@@ -188,12 +184,7 @@ bwg_ctrl_error_t bwg_ctrl_safe_stop(bwg_controller_t *controller, bwg_reason_t r
             return BWG_CTRL_PERSISTENCE_FAILED;
         }
     }
-    controller->has_active = false;
-    controller->lease_exact_window = false;
-    controller->cleanup_required = false;
-    controller->has_cleanup_reason = false;
-    controller->restoration = BWG_RESTORATION_CONFIRMED;
-    controller->restoration_reason = reason;
+    bwg_ctrl_lifecycle_finish_stop(&controller->lifecycle, reason);
     controller->has_last_ms = true;
     controller->last_ms = now_ms;
     return BWG_CTRL_OK;
@@ -201,8 +192,9 @@ bwg_ctrl_error_t bwg_ctrl_safe_stop(bwg_controller_t *controller, bwg_reason_t r
 
 bwg_ctrl_error_t bwg_ctrl_enforce_clock(bwg_controller_t *controller, uint64_t now_ms)
 {
-    if (controller->has_cleanup_reason) {
-        bwg_ctrl_error_t error = bwg_ctrl_safe_stop(controller, controller->cleanup_reason, now_ms);
+    bwg_reason_t pending_reason;
+    if (bwg_ctrl_lifecycle_stop_pending(&controller->lifecycle, &pending_reason)) {
+        bwg_ctrl_error_t error = bwg_ctrl_safe_stop(controller, pending_reason, now_ms);
         if (error != BWG_CTRL_OK) {
             return error;
         }
@@ -216,7 +208,8 @@ bwg_ctrl_error_t bwg_ctrl_enforce_clock(bwg_controller_t *controller, uint64_t n
     }
     controller->has_last_ms = true;
     controller->last_ms = now_ms;
-    if (controller->has_active && now_ms >= controller->deadlines.expires_at_ms) {
+    const bwg_ctrl_lease_t *maybe_lease = bwg_ctrl_lifecycle_maybe_lease(&controller->lifecycle);
+    if (maybe_lease != NULL && now_ms >= maybe_lease->deadlines.expires_at_ms) {
         return bwg_ctrl_safe_stop(controller, BWG_REASON_LEASE_EXPIRED, now_ms);
     }
     return BWG_CTRL_OK;
@@ -224,14 +217,13 @@ bwg_ctrl_error_t bwg_ctrl_enforce_clock(bwg_controller_t *controller, uint64_t n
 
 bwg_ctrl_error_t bwg_ctrl_acknowledge_boot(bwg_controller_t *controller)
 {
-    if (!controller->has_boot_report_generation || controller->boot_report_generation != controller->generation) {
+    if (!bwg_ctrl_lifecycle_reboot_reported_in(&controller->lifecycle, controller->generation)) {
         return BWG_CTRL_OK;
     }
     if (!controller->ops.effect_set(controller->ops.ctx, BWG_EFFECT_CLEAR)) {
         return BWG_CTRL_PERSISTENCE_FAILED;
     }
-    controller->boot_clear_required = false;
-    controller->has_boot_report_generation = false;
+    bwg_ctrl_lifecycle_acknowledge_reboot(&controller->lifecycle);
     return BWG_CTRL_OK;
 }
 
@@ -299,12 +291,8 @@ bwg_ctrl_error_t bwg_controller_confirm_sent(bwg_controller_t *controller, const
         return BWG_CTRL_OK;
     }
     if (effect->kind == BWG_CTRL_EFFECT_BOOT_REPORTED) {
-        if (!controller->boot_clear_required) {
-            return BWG_CTRL_STALE_RESPONSE;
-        }
-        controller->has_boot_report_generation = true;
-        controller->boot_report_generation = effect->generation;
-        return BWG_CTRL_OK;
+        return bwg_ctrl_lifecycle_note_reboot_reported(&controller->lifecycle, effect->generation) ? BWG_CTRL_OK
+                                                                                                    : BWG_CTRL_STALE_RESPONSE;
     }
     if (!controller->has_pending_token || controller->pending_token != effect->token) {
         return BWG_CTRL_STALE_RESPONSE;
@@ -325,7 +313,7 @@ bool bwg_controller_is_admitted(const bwg_controller_t *controller)
 
 bool bwg_controller_has_active_lease(const bwg_controller_t *controller)
 {
-    return controller->has_active;
+    return bwg_ctrl_lifecycle_maybe_lease(&controller->lifecycle) != NULL;
 }
 
 const char *bwg_controller_capability_digest(const bwg_controller_t *controller)
@@ -392,16 +380,17 @@ bwg_auth_result_t bwg_ctrl_verify_start(bwg_controller_t *controller, const bwg_
     return result;
 }
 
-bwg_auth_result_t bwg_ctrl_verify_renew(bwg_controller_t *controller, const bwg_lease_renewal_t *renewal, const char *binding)
+bwg_auth_result_t bwg_ctrl_verify_renew(bwg_controller_t *controller, const bwg_lease_renewal_t *renewal,
+                                        const char *challenge_id, const char *binding)
 {
     bwg_auth_attribution_t attribution = {0};
     bwg_auth_result_t result = BWG_AUTH_INVALID;
     if (controller->has_verifier) {
-        result = controller->verifier.verify_renew(controller->verifier.ctx, renewal, controller->challenge_id, binding);
+        result = controller->verifier.verify_renew(controller->verifier.ctx, renewal, challenge_id, binding);
     } else if (controller->trust_valid) {
         bwg_sequence_store_t store = store_of(controller);
-        result = bwg_lease_auth_verify_renew(controller->allocator, &controller->trust, &store, renewal,
-                                             controller->challenge_id, binding, &attribution);
+        result = bwg_lease_auth_verify_renew(controller->allocator, &controller->trust, &store, renewal, challenge_id,
+                                             binding, &attribution);
     }
     note_verification(controller, BWG_AUTH_OPERATION_RENEW, result, &attribution);
     return result;

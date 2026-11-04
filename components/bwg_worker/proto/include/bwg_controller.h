@@ -7,6 +7,7 @@
 
 #include "bwg_alloc.h"
 #include "bwg_cadence.h"
+#include "bwg_ctrl_lifecycle.h"
 #include "bwg_json_writer.h"
 #include "bwg_lease.h"
 #include "bwg_lease_auth.h"
@@ -51,12 +52,6 @@ typedef enum {
     BWG_EFFECT_PENDING = 1,
     BWG_EFFECT_REBOOT_CONFIRMED = 2,
 } bwg_effect_state_t;
-
-/** Both computed from one captured `now`. */
-typedef struct {
-    uint64_t renew_at_ms;
-    uint64_t expires_at_ms;
-} bwg_lease_deadlines_t;
 
 typedef enum {
     /** Nothing to report: the controller omits the key and discards anything written. */
@@ -210,12 +205,6 @@ typedef struct {
     const bwg_lease_verifier_t *maybe_verifier;
 } bwg_controller_config_t;
 
-typedef enum {
-    BWG_RESTORATION_NOT_REQUIRED = 0,
-    BWG_RESTORATION_PENDING,
-    BWG_RESTORATION_CONFIRMED,
-} bwg_restoration_state_t;
-
 /** What the owner holds until a reply's fate is known, then passes to bwg_controller_confirm_sent. */
 typedef enum {
     BWG_CTRL_EFFECT_NONE = 0,
@@ -284,21 +273,7 @@ typedef struct {
     uint8_t *seen_nonces;
     size_t seen_count;
 
-    bool has_active;
-    char lease_id[129];
-    char challenge_id[129];
-    bwg_lease_deadlines_t deadlines;
-    /** This lease's renewals must use the exact 60,000/20,000 window. */
-    bool lease_exact_window;
-
-    bool cleanup_required;
-    bool has_cleanup_reason;
-    bwg_reason_t cleanup_reason;
-    bool boot_clear_required;
-    bool has_boot_report_generation;
-    uint64_t boot_report_generation;
-    bwg_restoration_state_t restoration;
-    bwg_reason_t restoration_reason;
+    bwg_ctrl_lifecycle_t lifecycle;
     bool has_last_ms;
     uint64_t last_ms;
 

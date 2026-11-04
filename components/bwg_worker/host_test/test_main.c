@@ -45,5 +45,6 @@ int main(void)
     bwg_tests_core_dump_receipt();
     bwg_tests_preparation_receipt();
     bwg_tests_mining_rules();
+    bwg_tests_ctrl_lifecycle();
     return bwg_test_summary();
 }

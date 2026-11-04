@@ -20,7 +20,7 @@ static bwg_ctrl_error_t prove_fan(bwg_controller_t *controller, const bwg_ctrl_r
     if (bwg_ctrl_maybe_start_context(controller, now_ms) == NULL) {
         return BWG_CTRL_ADMISSION_REQUIRED;
     }
-    if (controller->cleanup_required || controller->boot_clear_required) {
+    if (!bwg_ctrl_lifecycle_is_quiet(&controller->lifecycle)) {
         return BWG_CTRL_INVALID_TRANSITION;
     }
     bwg_jw_t writer;
@@ -30,8 +30,7 @@ static bwg_ctrl_error_t prove_fan(bwg_controller_t *controller, const bwg_ctrl_r
     if (!ops->effect_set(ops->ctx, BWG_EFFECT_PENDING)) {
         return BWG_CTRL_PERSISTENCE_FAILED;
     }
-    controller->cleanup_required = true;
-    controller->restoration = BWG_RESTORATION_PENDING;
+    bwg_ctrl_lifecycle_hold_cooling(&controller->lifecycle);
     uint32_t fan_rpm = 0;
     if (!ops->maybe_cooling_prove(ops->ctx, &fan_rpm)) {
         const bwg_ctrl_error_t stop_error = bwg_ctrl_safe_stop(controller, BWG_REASON_CONTROL_FAILED, now_ms);
@@ -58,7 +57,7 @@ static bwg_ctrl_error_t restore_baseline(bwg_controller_t *controller, const bwg
     if (bwg_ctrl_maybe_active_context(controller) == NULL) {
         return BWG_CTRL_ADMISSION_REQUIRED;
     }
-    if (!controller->cleanup_required) {
+    if (!bwg_ctrl_lifecycle_cooling_held(&controller->lifecycle)) {
         return BWG_CTRL_INVALID_TRANSITION;
     }
     bwg_jw_t writer;
@@ -72,15 +71,11 @@ static bwg_ctrl_error_t restore_baseline(bwg_controller_t *controller, const bwg
     // Whatever comes next starts from a fresh proof.
     controller->has_admission = false;
     controller->has_pending_token = false;
-    controller->has_cleanup_reason = true;
-    controller->cleanup_reason = BWG_REASON_CANCELLED;
+    bwg_ctrl_lifecycle_begin_stop(&controller->lifecycle, BWG_REASON_CANCELLED);
     if (!ops->effect_set(ops->ctx, BWG_EFFECT_CLEAR)) {
         return BWG_CTRL_PERSISTENCE_FAILED;
     }
-    controller->cleanup_required = false;
-    controller->has_cleanup_reason = false;
-    controller->restoration = BWG_RESTORATION_CONFIRMED;
-    controller->restoration_reason = BWG_REASON_CANCELLED;
+    bwg_ctrl_lifecycle_finish_stop(&controller->lifecycle, BWG_REASON_CANCELLED);
     controller->has_last_ms = true;
     controller->last_ms = now_ms;
     bwg_jw_object_begin(&writer);
@@ -109,7 +104,8 @@ bwg_ctrl_error_t bwg_ctrl_prepare_cooling(bwg_controller_t *controller, const bw
     if (!prove && !bwg_str_equals(action, "restore_baseline")) {
         return BWG_CTRL_INVALID_REQUEST;
     }
-    if (controller->has_active || controller->has_cleanup_reason) {
+    if (bwg_ctrl_lifecycle_maybe_lease(&controller->lifecycle) != NULL ||
+        bwg_ctrl_lifecycle_stop_pending(&controller->lifecycle, NULL)) {
         return BWG_CTRL_INVALID_TRANSITION;
     }
     return prove ? prove_fan(controller, request, now_ms, outcome) : restore_baseline(controller, request, now_ms, outcome);

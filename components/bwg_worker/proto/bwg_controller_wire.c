@@ -172,31 +172,44 @@ size_t bwg_ctrl_probe_overhead(bwg_str_t request_id, uint64_t request_padding_by
     return writer.len;
 }
 
-static void write_restoration(bwg_jw_t *writer, const char *status, const char *maybe_reason)
+static const char *restoration_status_name(bwg_restoration_status_t status)
+{
+    switch (status) {
+    case BWG_RESTORATION_NOT_REQUIRED:
+        return "not_required";
+    case BWG_RESTORATION_PENDING:
+        return "pending";
+    case BWG_RESTORATION_CONFIRMED:
+    default:
+        return "confirmed";
+    }
+}
+
+static void write_restoration(bwg_jw_t *writer, bwg_ctrl_restoration_t restoration)
 {
     bwg_jw_key(writer, "restoration");
     bwg_jw_object_begin(writer);
     bwg_jw_key(writer, "status");
-    bwg_jw_cstr(writer, status);
-    if (maybe_reason != NULL) {
+    bwg_jw_cstr(writer, restoration_status_name(restoration.status));
+    if (restoration.status == BWG_RESTORATION_CONFIRMED) {
         bwg_jw_key(writer, "reason");
-        bwg_jw_cstr(writer, maybe_reason);
+        bwg_jw_cstr(writer, bwg_reason_name(restoration.reason));
     }
     bwg_jw_object_end(writer);
 }
 
-static void write_lease(const bwg_controller_t *controller, bwg_jw_t *writer)
+static void write_lease(const bwg_ctrl_lease_t *lease, bwg_jw_t *writer)
 {
     bwg_jw_key(writer, "lease");
     bwg_jw_object_begin(writer);
     bwg_jw_key(writer, "leaseId");
-    bwg_jw_cstr(writer, controller->lease_id);
+    bwg_jw_cstr(writer, lease->lease_id);
     bwg_jw_key(writer, "challengeId");
-    bwg_jw_cstr(writer, controller->challenge_id);
+    bwg_jw_cstr(writer, lease->challenge_id);
     bwg_jw_key(writer, "renewAtMonotonicMilliseconds");
-    bwg_jw_u64(writer, controller->deadlines.renew_at_ms);
+    bwg_jw_u64(writer, lease->deadlines.renew_at_ms);
     bwg_jw_key(writer, "expiresAtMonotonicMilliseconds");
-    bwg_jw_u64(writer, controller->deadlines.expires_at_ms);
+    bwg_jw_u64(writer, lease->deadlines.expires_at_ms);
     bwg_jw_object_end(writer);
 }
 
@@ -238,27 +251,22 @@ static bwg_ctrl_error_t append_evidence(const bwg_controller_t *controller, bwg_
 
 bwg_ctrl_error_t bwg_ctrl_write_status(const bwg_controller_t *controller, bwg_jw_t *writer, uint64_t now_ms)
 {
-    if (!controller->has_active && !controller->boot_clear_required &&
-        controller->restoration == BWG_RESTORATION_PENDING) {
+    const bwg_ctrl_lease_t *maybe_lease = bwg_ctrl_lifecycle_maybe_lease(&controller->lifecycle);
+    // Only a lease can be reported while something is held; the fan hold has no state to show.
+    if (maybe_lease == NULL && bwg_ctrl_lifecycle_holds_effect(&controller->lifecycle)) {
         return BWG_CTRL_RESTORATION_PENDING;
     }
     bwg_jw_object_begin(writer);
     bwg_jw_key(writer, "protocolVersion");
     bwg_jw_cstr(writer, BWG_CONTROLLER_PROTOCOL);
     bwg_jw_key(writer, "state");
-    bwg_jw_cstr(writer, controller->has_active ? "mining" : "baseline");
+    bwg_jw_cstr(writer, maybe_lease != NULL ? "mining" : "baseline");
     bwg_jw_key(writer, "monotonicMilliseconds");
     bwg_jw_u64(writer, now_ms);
-    if (controller->has_active) {
-        write_lease(controller, writer);
-        write_restoration(writer, "pending", NULL);
-    } else if (controller->boot_clear_required) {
-        write_restoration(writer, "confirmed", bwg_reason_name(BWG_REASON_REBOOT));
-    } else if (controller->restoration == BWG_RESTORATION_NOT_REQUIRED) {
-        write_restoration(writer, "not_required", NULL);
-    } else {
-        write_restoration(writer, "confirmed", bwg_reason_name(controller->restoration_reason));
+    if (maybe_lease != NULL) {
+        write_lease(maybe_lease, writer);
     }
+    write_restoration(writer, bwg_ctrl_lifecycle_restoration(&controller->lifecycle));
     bwg_ctrl_error_t error = append_evidence(controller, writer);
     bwg_jw_object_end(writer);
     return error;

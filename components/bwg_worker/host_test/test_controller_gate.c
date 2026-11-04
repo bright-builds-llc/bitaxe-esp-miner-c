@@ -42,7 +42,7 @@ static char *input_json(yyjson_val *root, const char *input_name)
 static bwg_ctrl_error_t ensure_admitted(scenario_t *scenario)
 {
     rig_t *rig = &scenario->rig;
-    if (rig->controller.boot_clear_required) {
+    if (bwg_ctrl_lifecycle_reboot_due(&rig->controller.lifecycle)) {
         // A real host reads the baseline first, which is what lets a reboot be acknowledged.
         bwg_session_binding_t session = rig_fixture_session();
         bwg_ctrl_error_t begun = bwg_controller_begin_session(&rig->controller, &session);

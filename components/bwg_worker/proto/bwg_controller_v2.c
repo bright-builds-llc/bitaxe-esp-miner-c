@@ -162,8 +162,7 @@ static bwg_ctrl_error_t admit(bwg_controller_t *controller, const bwg_ctrl_reque
     if (bwg_ctrl_maybe_start_context(controller, now_ms) == NULL) {
         return BWG_CTRL_ADMISSION_REQUIRED;
     }
-    if (controller->has_active || controller->cleanup_required || controller->boot_clear_required || bwg_ctrl_attempt_busy(controller) ||
-        controller->restoration == BWG_RESTORATION_PENDING) {
+    if (!bwg_ctrl_lifecycle_is_quiet(&controller->lifecycle) || bwg_ctrl_attempt_busy(controller)) {
         return BWG_CTRL_INVALID_TRANSITION;
     }
     bwg_v2_channel_input_t input;
@@ -245,7 +244,7 @@ bwg_ctrl_error_t bwg_ctrl_confirm_v2_dispatch(bwg_controller_t *controller, cons
     if (error == BWG_CTRL_OK &&
         (bwg_ctrl_maybe_start_context(controller, now_ms) == NULL || effect->generation != controller->generation ||
          !controller->has_v2_generation || controller->v2_generation != effect->generation || controller->has_pending_token ||
-         controller->has_active || controller->cleanup_required || !controller->authenticated_logical_session)) {
+         bwg_ctrl_lifecycle_holds_effect(&controller->lifecycle) || !controller->authenticated_logical_session)) {
         error = BWG_CTRL_STALE_RESPONSE;
     }
     if (error == BWG_CTRL_OK && !ops->maybe_v2_dispatch(ops->ctx)) {

@@ -21,8 +21,7 @@ static bwg_ctrl_error_t require_review_idle(const bwg_controller_t *controller, 
     if (bwg_ctrl_maybe_start_context(controller, now_ms) == NULL) {
         return BWG_CTRL_ADMISSION_REQUIRED;
     }
-    if (controller->has_active || controller->cleanup_required || controller->has_cleanup_reason ||
-        controller->has_pending_token || controller->restoration == BWG_RESTORATION_PENDING) {
+    if (bwg_ctrl_lifecycle_holds_effect(&controller->lifecycle) || controller->has_pending_token) {
         return BWG_CTRL_INVALID_TRANSITION;
     }
     return BWG_CTRL_OK;
@@ -171,11 +170,11 @@ bwg_ctrl_error_t bwg_ctrl_prepare_campaign_review(bwg_controller_t *controller, 
 
 static bool stimulus_window_is_open(const bwg_controller_t *controller, uint64_t now_ms)
 {
-    if (!controller->has_active || controller->has_cleanup_reason || !controller->has_last_ms ||
-        controller->last_ms < BWG_CLOCK_STIMULUS_OFFSET_MS) {
+    const bwg_ctrl_lease_t *maybe_lease = bwg_ctrl_lifecycle_maybe_running_lease(&controller->lifecycle);
+    if (maybe_lease == NULL || !controller->has_last_ms || controller->last_ms < BWG_CLOCK_STIMULUS_OFFSET_MS) {
         return false;
     }
-    const uint64_t expires_ms = controller->deadlines.expires_at_ms;
+    const uint64_t expires_ms = maybe_lease->deadlines.expires_at_ms;
     return expires_ms > now_ms && expires_ms - now_ms >= STIMULUS_LEASE_HEADROOM_MS;
 }
 

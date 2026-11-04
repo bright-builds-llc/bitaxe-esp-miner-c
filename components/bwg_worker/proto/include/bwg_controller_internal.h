@@ -56,7 +56,7 @@ const char *bwg_ctrl_maybe_active_context(const bwg_controller_t *controller);
 bwg_auth_result_t bwg_ctrl_verify_start(bwg_controller_t *controller, const bwg_lease_grant_t *grant,
                                         const char *binding);
 bwg_auth_result_t bwg_ctrl_verify_renew(bwg_controller_t *controller, const bwg_lease_renewal_t *renewal,
-                                        const char *binding);
+                                        const char *challenge_id, const char *binding);
 /** Logs a Start or Renew refused for its context, before any signature check. */
 void bwg_ctrl_note_context_rejection(bwg_controller_t *controller, bwg_auth_operation_t operation);
 

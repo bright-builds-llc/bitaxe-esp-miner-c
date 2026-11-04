@@ -14,6 +14,7 @@ Nothing at the moment.
 - `task-secured-ble-provisioning`: BLE setup with more security than upstream. BLE stays off in fork builds until this exists. The earlier notes are in the Rust repository's `TASKS.md`.
 - `task-telemetry-descriptive-extensions`: descriptive telemetry names, if still wanted. The earlier notes are in the Rust repository's `TASKS.md`.
 - `task-secp256k1-lowmemory`: save about 1 MB with the `secp256k1` table setting. See `docs/project/c-fork-handoff.md`.
+- `task-lifecycle-board-rerun`: the controller's lease and effect lifecycle is now one state type (`proto/bwg_ctrl_lifecycle.c`). Host tests show no change in behaviour, but the board evidence for restoration, stop retries and the reboot marker predates it. Rerun those on the 601 and 205 before citing it for a later commit.
 
 ## Unexplained results
 

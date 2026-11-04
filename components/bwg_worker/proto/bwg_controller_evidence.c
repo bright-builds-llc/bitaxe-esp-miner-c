@@ -13,8 +13,8 @@ static bwg_ctrl_error_t require_evidence_idle(const bwg_controller_t *controller
     if (bwg_ctrl_maybe_start_context(controller, now_ms) == NULL) {
         return BWG_CTRL_ADMISSION_REQUIRED;
     }
-    if (controller->has_active || controller->cleanup_required || controller->has_cleanup_reason ||
-        controller->has_pending_token || controller->restoration == BWG_RESTORATION_PENDING || bwg_ctrl_attempt_busy(controller)) {
+    if (bwg_ctrl_lifecycle_holds_effect(&controller->lifecycle) || controller->has_pending_token ||
+        bwg_ctrl_attempt_busy(controller)) {
         return BWG_CTRL_INVALID_TRANSITION;
     }
     return BWG_CTRL_OK;

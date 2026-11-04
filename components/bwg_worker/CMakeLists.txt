@@ -3,7 +3,7 @@ set(srcs "bwg_authority.c" "bwg_limits.c" "bwg_link_presence.c" "bwg_provision.c
          "proto/bwg_controller_wire.c" "proto/bwg_crash_streak.c" "proto/bwg_frame.c" "proto/bwg_json.c" "proto/bwg_json_writer.c"
          "proto/bwg_lease.c" "proto/bwg_lease_auth.c" "proto/bwg_link.c" "proto/bwg_link_shared.c"
          "proto/bwg_allowance.c" "proto/bwg_budget.c" "proto/bwg_ledger.c" "proto/bwg_possession.c" "proto/bwg_progress.c" "proto/bwg_reason.c" "proto/bwg_review.c" "proto/bwg_scan.c" "proto/bwg_seq_doc.c"
-         "proto/bwg_trust.c" "proto/bwg_writer.c" "proto/bwg_cutoff.c" "proto/bwg_core_dump_receipt.c" "proto/bwg_preparation_receipt.c" "proto/bwg_restart_guard.c" "proto/bwg_mining_rules.c")
+         "proto/bwg_trust.c" "proto/bwg_writer.c" "proto/bwg_cutoff.c" "proto/bwg_core_dump_receipt.c" "proto/bwg_preparation_receipt.c" "proto/bwg_restart_guard.c" "proto/bwg_mining_rules.c" "proto/bwg_ctrl_lifecycle.c")
 if(CONFIG_BWG_REVOCATION_PROOF)
     list(APPEND srcs "bwg_revocation_proof.c")
 endif()
