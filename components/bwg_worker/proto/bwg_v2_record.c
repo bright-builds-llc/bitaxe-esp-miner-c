@@ -65,6 +65,7 @@ bool bwg_v2_record_admit(bwg_v2_record_t *record, bwg_v2_scope_t scope, const ch
     record->fence_retained = true;
     record->socket_closed_at_us = BWG_V2_NONE;
     record->worker_quiescent_at_us = BWG_V2_NONE;
+    record->connection_at_us = BWG_V2_NONE;
     for (size_t i = 0; i < BWG_V2_OP_COUNT; i++) {
         bwg_v2_timing_t *timing = &record->timings[i];
         timing->max_duration_us = BWG_V2_NONE;
@@ -144,10 +145,19 @@ static bool same_failure(const bwg_v2_failure_t *failure, bwg_v2_stage_t stage, 
     return failure->stage == stage && failure->category == category && failure->at_us == at_us;
 }
 
+bool bwg_v2_record_failed(const bwg_v2_record_t *record)
+{
+    return record->first_failure.category != BWG_V2_FAILURE_NONE;
+}
+
+bool bwg_v2_record_committed(const bwg_v2_record_t *record)
+{
+    return record->frame_phase >= 4;
+}
+
 void bwg_v2_record_fail(bwg_v2_record_t *record, bwg_v2_stage_t stage, bwg_v2_failure_category_t category, uint64_t at_us)
 {
-    if (!record->has_first_failure) {
-        record->has_first_failure = true;
+    if (!bwg_v2_record_failed(record)) {
         record->first_failure = (bwg_v2_failure_t){.stage = stage, .category = category, .at_us = at_us};
         return;
     }
@@ -250,11 +260,10 @@ bool bwg_v2_record_connected(bwg_v2_record_t *record, const bwg_v2_socket_t *soc
     if (!record_time(record, now_us, &time_us)) {
         return false;
     }
-    if (record->has_connection) {
+    if (record->connection_at_us != BWG_V2_NONE) {
         bwg_v2_record_fail(record, BWG_V2_STAGE_CONNECTED, BWG_V2_FAILURE_EXTRA, time_us);
         return false;
     }
-    record->has_connection = true;
     record->connection_at_us = time_us;
     record->socket = *socket;
     bwg_v2_record_event(record, BWG_V2_STAGE_CONNECTED, time_us, BWG_V2_NONE, BWG_V2_NONE, BWG_V2_NONE, NULL);
@@ -314,7 +323,6 @@ static bool job_frame(bwg_v2_record_t *record, uint8_t type, const uint8_t heade
     default:
         record->last_frame_stage = BWG_V2_STAGE_WORK_READY;
         crypto_hash_sha256_final((crypto_hash_sha256_state *)record->commitment_state, record->job_commitment);
-        record->has_job_commitment = true;
         bwg_v2_record_event(record, BWG_V2_STAGE_WORK_READY, time_us, first, second, BWG_V2_NONE, digest);
         break;
     }
@@ -528,9 +536,9 @@ static void finish(bwg_v2_record_t *record, uint64_t time_us)
         return;
     }
     const bool complete = record->socket_closed && time_us != BWG_V2_NONE && !record->fence_retained;
-    const bool success = !record->has_first_failure && complete && record->has_job_commitment &&
+    const bool success = !bwg_v2_record_failed(record) && complete && bwg_v2_record_committed(record) &&
                          (record->scope == BWG_V2_SCOPE_SHARE ? share_succeeded(record) : time_us <= record->authority_deadline_us);
-    if (!success && !record->has_first_failure) {
+    if (!success && !bwg_v2_record_failed(record)) {
         bwg_v2_record_fail(record, BWG_V2_STAGE_WORKER_QUIESCENT, BWG_V2_FAILURE_EVIDENCE, time_us);
     }
     terminal(record, success ? BWG_V2_OUTCOME_ACCEPTED : (complete ? BWG_V2_OUTCOME_REJECTED : BWG_V2_OUTCOME_INCOMPLETE), time_us);

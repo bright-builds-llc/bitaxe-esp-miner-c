@@ -84,8 +84,8 @@ static void a_full_exchange_is_accepted(void)
     // Assert
     ASSERT_EQ(s_record.state, BWG_NOISE_STATE_TERMINAL);
     ASSERT_EQ(s_record.outcome, BWG_NOISE_OUTCOME_ACCEPTED);
-    ASSERT_FALSE(s_record.has_first_failure);
-    ASSERT_TRUE(s_record.deadline_met);
+    ASSERT_EQ(s_record.first_failure.category, BWG_NOISE_CATEGORY_NONE);
+    ASSERT_EQ(s_record.deadline_met, BWG_NOISE_DEADLINE_MET);
 }
 
 static void a_stage_out_of_order_fails_the_evidence(void)
@@ -213,7 +213,7 @@ static void the_authority_deadline_expires_the_attempt(void)
     // Assert
     ASSERT_EQ(s_record.first_failure.category, BWG_NOISE_CATEGORY_AUTHORITY_LOST);
     ASSERT_EQ(s_record.outcome, BWG_NOISE_OUTCOME_EXPIRED);
-    ASSERT_TRUE(s_record.deadline_met);
+    ASSERT_EQ(s_record.deadline_met, BWG_NOISE_DEADLINE_MET);
 }
 
 static void a_worker_past_the_tail_leaves_the_attempt_incomplete(void)
@@ -226,7 +226,7 @@ static void a_worker_past_the_tail_leaves_the_attempt_incomplete(void)
 
     // Assert
     ASSERT_EQ(s_record.outcome, BWG_NOISE_OUTCOME_INCOMPLETE);
-    ASSERT_FALSE(s_record.deadline_met);
+    ASSERT_EQ(s_record.deadline_met, BWG_NOISE_DEADLINE_MISSED);
     ASSERT_EQ(s_record.resource_failure.detail, BWG_NOISE_DETAIL_RESOURCE_UNRELEASED);
 }
 
@@ -241,7 +241,7 @@ static void a_late_join_keeps_an_incomplete_outcome(void)
 
     // Assert
     ASSERT_EQ(s_record.outcome, BWG_NOISE_OUTCOME_INCOMPLETE);
-    ASSERT_FALSE(s_record.deadline_met);
+    ASSERT_EQ(s_record.deadline_met, BWG_NOISE_DEADLINE_MISSED);
     ASSERT_TRUE(s_record.worker_quiescent);
 }
 
@@ -324,6 +324,39 @@ static void an_idle_status_has_no_job(void)
     yyjson_doc_free(doc);
 }
 
+static void a_running_status_has_no_failure_outcome_or_deadline(void)
+{
+    // Arrange
+    admit_running();
+
+    // Act
+    yyjson_doc *doc = status_doc(&s_record, ADMIT_US + 2000);
+
+    // Assert
+    ASSERT_TRUE(doc != NULL);
+    ASSERT_TRUE(yyjson_is_null(at(doc, "/job/firstFailure")));
+    ASSERT_TRUE(yyjson_is_null(at(doc, "/job/terminal")));
+    ASSERT_TRUE(yyjson_is_null(at(doc, "/job/resources/deadlineMet")));
+    ASSERT_TRUE(yyjson_is_null(at(doc, "/job/resources/failure")));
+    yyjson_doc_free(doc);
+}
+
+static void an_accepted_status_met_its_deadline_without_failures(void)
+{
+    // Arrange
+    run_accepted();
+
+    // Act
+    yyjson_doc *doc = status_doc(&s_record, FINISHED_US);
+
+    // Assert
+    ASSERT_TRUE(doc != NULL);
+    ASSERT_TRUE(yyjson_is_null(at(doc, "/job/firstFailure")));
+    ASSERT_TRUE(yyjson_get_bool(at(doc, "/job/resources/deadlineMet")));
+    ASSERT_TRUE(yyjson_is_null(at(doc, "/job/resources/failure")));
+    yyjson_doc_free(doc);
+}
+
 static void an_accepted_status_names_each_stage_and_its_bytes(void)
 {
     // Arrange
@@ -392,8 +425,12 @@ static void a_full_status_fits_its_reservation(void)
 {
     // Arrange
     run_accepted();
-    s_record.has_resource_failure = true;
-    s_record.resource_failure = s_record.first_failure;
+    s_record.resource_failure = (bwg_noise_failure_t){
+        .stage = BWG_NOISE_AT_CANDIDATE_INVENTORY,
+        .category = BWG_NOISE_CATEGORY_EVIDENCE_INCOMPLETE,
+        .detail = BWG_NOISE_DETAIL_RESOURCE_UNRELEASED,
+        .at_us = FINISHED_US,
+    };
 
     // Act
     yyjson_doc *doc = status_doc(&s_record, FINISHED_US);
@@ -424,6 +461,8 @@ void bwg_tests_noise_record(void)
     BWG_RUN(a_join_without_every_stage_is_rejected_as_missing_evidence);
     BWG_RUN(an_unrepresentable_deadline_is_refused);
     BWG_RUN(an_idle_status_has_no_job);
+    BWG_RUN(a_running_status_has_no_failure_outcome_or_deadline);
+    BWG_RUN(an_accepted_status_met_its_deadline_without_failures);
     BWG_RUN(an_accepted_status_names_each_stage_and_its_bytes);
     BWG_RUN(a_quiescent_stage_matches_the_release);
     BWG_RUN(a_status_is_never_older_than_its_record);

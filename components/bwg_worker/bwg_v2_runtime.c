@@ -39,7 +39,7 @@ static void take(void)
 /** Lets go of the record, then has any failure end the attempt: the revocation path isn't called under this lock. */
 static void give(void)
 {
-    const bool failed = s_record->has_first_failure;
+    const bool failed = bwg_v2_record_failed(s_record);
     const bool timeout = failed && s_record->first_failure.category == BWG_V2_FAILURE_TIMEOUT;
     const bool share = s_record->scope == BWG_V2_SCOPE_SHARE;
     if (s_record->state == BWG_V2_STATE_TERMINAL) {
@@ -151,7 +151,7 @@ static void note_safety_facts(const bwg_revocation_snapshot_t *snapshot)
 
 static void join_never_started(void)
 {
-    if (!s_record->has_first_failure) {
+    if (!bwg_v2_record_failed(s_record)) {
         bwg_v2_record_fail(s_record, BWG_V2_STAGE_PREPARING, BWG_V2_FAILURE_ADMISSION, now_us());
     }
     bwg_v2_record_socket_closed(s_record, now_us());
@@ -211,7 +211,7 @@ bool bwg_v2_note_preparing(void)
         return false;
     }
     take();
-    const bool bound = !s_record->has_first_failure && bwg_v2_record_bind_pool(s_record, POOL_GENERATION, POOL_EPOCH);
+    const bool bound = !bwg_v2_record_failed(s_record) && bwg_v2_record_bind_pool(s_record, POOL_GENERATION, POOL_EPOCH);
     if (bound) {
         bwg_v2_record_event(s_record, BWG_V2_STAGE_PREPARING, now_us(), BWG_V2_NONE, BWG_V2_NONE, BWG_V2_NONE, NULL);
         s_waiting_since_us = now_us();
@@ -317,10 +317,10 @@ bool bwg_v2_keep_going(void)
     }
     take();
     bwg_v2_record_tick(s_record, now_us());
-    if (!s_record->has_job_commitment && now_us() - s_waiting_since_us >= WAITING_LIMIT_US) {
+    if (!bwg_v2_record_committed(s_record) && now_us() - s_waiting_since_us >= WAITING_LIMIT_US) {
         bwg_v2_record_fail(s_record, BWG_V2_STAGE_WORKER_QUIESCENT, BWG_V2_FAILURE_TIMEOUT, now_us());
     }
-    const bool going = !s_record->has_first_failure;
+    const bool going = !bwg_v2_record_failed(s_record);
     give();
     return going;
 }
@@ -431,7 +431,7 @@ void bwg_v2_note_worker_returned(void)
         give();
         return;
     }
-    if (!s_record->has_first_failure && !(stopping && heartbeat_ended_an_accepted_share(&snapshot))) {
+    if (!bwg_v2_record_failed(s_record) && !(stopping && heartbeat_ended_an_accepted_share(&snapshot))) {
         bwg_v2_record_fail(s_record, BWG_V2_STAGE_WORKER_QUIESCENT, stopping ? BWG_V2_FAILURE_AUTHORITY : BWG_V2_FAILURE_PROTOCOL,
                            now_us());
     }

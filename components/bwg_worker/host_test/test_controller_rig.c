@@ -374,6 +374,22 @@ static bool open_controller(rig_t *rig)
         .seed = BWG_TEST_RFC8032_SEED,
         .maybe_verifier = rig->real_trust ? NULL : &verifier,
     };
+    static const bwg_v2_ops_t V2_OPS = {
+        .view = op_v2_view,
+        .write_status = op_v2_write_status,
+        .busy = op_v2_busy,
+        .admit = op_v2_admit,
+        .dispatch = op_v2_dispatch,
+        .cancel = op_v2_cancel,
+    };
+    static const bwg_noise_ops_t NOISE_OPS = {
+        .view = op_noise_view,
+        .write_status = op_noise_write_status,
+        .busy = op_noise_busy,
+        .admit = op_noise_admit,
+        .dispatch = op_noise_dispatch,
+        .cancel = op_noise_cancel,
+    };
     bwg_controller_ops_t ops = {
         .ctx = &rig->device,
         .start = op_start,
@@ -398,18 +414,8 @@ static bool open_controller(rig_t *rig)
         .maybe_cadence_arm = op_cadence_arm,
         .maybe_write_cadence = op_write_cadence,
         .maybe_note_max_probe = op_note_max_probe,
-        .maybe_v2_view = op_v2_view,
-        .maybe_v2_write_status = op_v2_write_status,
-        .maybe_v2_busy = op_v2_busy,
-        .maybe_v2_admit = op_v2_admit,
-        .maybe_v2_dispatch = op_v2_dispatch,
-        .maybe_v2_cancel = op_v2_cancel,
-        .maybe_noise_view = op_noise_view,
-        .maybe_noise_write_status = op_noise_write_status,
-        .maybe_noise_busy = op_noise_busy,
-        .maybe_noise_admit = op_noise_admit,
-        .maybe_noise_dispatch = op_noise_dispatch,
-        .maybe_noise_cancel = op_noise_cancel,
+        .maybe_v2 = &V2_OPS,
+        .maybe_noise = &NOISE_OPS,
     };
     bool ok = bwg_controller_init(&rig->controller, &bwg_test_allocator, &config, &ops);
     bwg_test_free_fixture(capability);

@@ -3,6 +3,7 @@
 #include <stdatomic.h>
 #include <stddef.h>
 
+#include "bwg_budget.h"
 #include "esp_attr.h"
 #include "esp_log.h"
 #include "esp_timer.h"
@@ -42,6 +43,12 @@ static esp_timer_handle_t s_budget_timer;
 static uint32_t now_ms(void)
 {
     return (uint32_t)(esp_timer_get_time() / 1000);
+}
+
+/** For the stamps a reader takes as unset at 0. */
+static uint32_t stamp_now(void)
+{
+    return bwg_budget_stamp(now_ms());
 }
 
 uint32_t IRAM_ATTR bwg_revocation_panic_word(void)
@@ -100,7 +107,7 @@ static void stop_deadlines(void)
 
 static void closed_now(bwg_authority_state_t from, bwg_stop_reason_t reason)
 {
-    const uint32_t now = now_ms();
+    const uint32_t now = stamp_now();
     atomic_store_explicit(&s_closed_ms, now, memory_order_release);
     // A later handover closes authority again, and must not move the end of the last lease.
     if (from == BWG_AUTHORITY_LEASED) {
@@ -161,7 +168,8 @@ static bool note_first_work(uint32_t now)
         atomic_store_explicit(&s_budget_deadline_ms, now + limit, memory_order_release);
     }
     uint32_t unset = 0;
-    if (!atomic_compare_exchange_strong_explicit(&s_first_work_ms, &unset, now, memory_order_acq_rel, memory_order_relaxed)) {
+    if (!atomic_compare_exchange_strong_explicit(&s_first_work_ms, &unset, bwg_budget_stamp(now), memory_order_acq_rel,
+                                                 memory_order_relaxed)) {
         return true;
     }
     return limit == 0 || esp_timer_start_once(s_budget_timer, limit * 1000ULL) == ESP_OK;
@@ -239,7 +247,7 @@ void bwg_revocation_note_stop_started(void)
     if (load_state() != BWG_AUTHORITY_STOPPING) {
         return;
     }
-    const uint32_t now = now_ms();
+    const uint32_t now = stamp_now();
     atomic_store_explicit(&s_stop_started_ms, now, memory_order_release);
     if (atomic_load_explicit(&s_closed_ms, memory_order_acquire) ==
         atomic_load_explicit(&s_lease_closed_ms, memory_order_relaxed)) {
@@ -254,7 +262,7 @@ void bwg_revocation_note_stopped(void)
     if (!apply(BWG_AUTHORITY_EVENT_STOP_CONFIRMED, reason)) {
         return;
     }
-    atomic_store_explicit(&s_stopped_ms, now_ms(), memory_order_release);
+    atomic_store_explicit(&s_stopped_ms, stamp_now(), memory_order_release);
 
     const bwg_revocation_snapshot_t snapshot = bwg_revocation_snapshot();
     ESP_LOGW(TAG, "stopped reason=%s heartbeat=%lu closed=%lu stop_started=%lu stopped=%lu last_work=%lu last_share=%lu refused_work=%lu refused_shares=%lu",

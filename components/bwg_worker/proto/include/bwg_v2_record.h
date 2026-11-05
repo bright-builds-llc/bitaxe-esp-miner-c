@@ -63,7 +63,9 @@ typedef enum {
 } bwg_v2_stage_t;
 
 typedef enum {
-    BWG_V2_FAILURE_ADMISSION = 0,
+    /** No failure: a record's first failure until one comes. */
+    BWG_V2_FAILURE_NONE = 0,
+    BWG_V2_FAILURE_ADMISSION,
     BWG_V2_FAILURE_CLOCK,
     BWG_V2_FAILURE_ALLOCATION,
     BWG_V2_FAILURE_AUTHORITY,
@@ -202,7 +204,7 @@ typedef struct {
     uint64_t serial_transport_epoch;
     uint64_t pool_session_generation;
     uint64_t pool_transport_epoch;
-    bool has_job_commitment;
+    /** Whole only once bwg_v2_record_committed says so. */
     uint8_t job_commitment[BWG_V2_DIGEST_BYTES];
     uint64_t observed_at_us;
     uint64_t last_time_us;
@@ -217,7 +219,7 @@ typedef struct {
     bwg_v2_timing_t timings[BWG_V2_OP_COUNT];
     uint32_t share_count;
     bwg_v2_share_t shares[BWG_V2_MAX_SHARES];
-    bool has_first_failure;
+    /** Its category is BWG_V2_FAILURE_NONE until the first failure. */
     bwg_v2_failure_t first_failure;
     uint32_t secondary_count;
     bwg_v2_failure_t secondary[BWG_V2_MAX_FAILURES];
@@ -226,7 +228,7 @@ typedef struct {
     bool fence_retained;
     uint64_t socket_closed_at_us;
     uint64_t worker_quiescent_at_us;
-    bool has_connection;
+    /** BWG_V2_NONE until the socket connects. */
     uint64_t connection_at_us;
     bwg_v2_socket_t socket;
     bwg_v2_dispatch_t dispatches[BWG_V2_MAX_DISPATCHES];
@@ -250,6 +252,12 @@ bool bwg_v2_record_budget_armed(bwg_v2_record_t *record, uint64_t arming_epoch_m
 
 /** Binds the record to its one pool session. False once bound or finished. */
 bool bwg_v2_record_bind_pool(bwg_v2_record_t *record, uint64_t generation, uint64_t epoch);
+
+/** Whether the attempt has failed: a failure is never undone. */
+bool bwg_v2_record_failed(const bwg_v2_record_t *record);
+
+/** Whether all four job frames came, so the job commitment is whole. */
+bool bwg_v2_record_committed(const bwg_v2_record_t *record);
 
 /** Keeps the first cause. Later failures stay only if they are cleanup or clock problems of their own. */
 void bwg_v2_record_fail(bwg_v2_record_t *record, bwg_v2_stage_t stage, bwg_v2_failure_category_t category, uint64_t at_us);

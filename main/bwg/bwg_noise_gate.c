@@ -329,7 +329,7 @@ static bool op_view(void *ctx, uint64_t generation, bwg_noise_view_t *view)
     if (s_admitted) {
         bwg_noise_record_tick(s_record, now_us());
         view->has_record = true;
-        view->terminal = s_record->has_terminal;
+        view->terminal = s_record->outcome != BWG_NOISE_OUTCOME_NONE;
         strlcpy(view->attempt_id, s_record->attempt_id, sizeof(view->attempt_id));
     }
     give();
@@ -433,10 +433,13 @@ void bwg_noise_gate_fill_ops(bwg_controller_ops_t *ops, GlobalState *GLOBAL_STAT
         ESP_LOGE(TAG, "No memory for the diagnostic record: its commands stay refused");
         return;
     }
-    ops->maybe_noise_view = op_view;
-    ops->maybe_noise_write_status = op_write_status;
-    ops->maybe_noise_busy = op_busy;
-    ops->maybe_noise_admit = op_admit;
-    ops->maybe_noise_dispatch = op_dispatch;
-    ops->maybe_noise_cancel = op_cancel;
+    static const bwg_noise_ops_t NOISE_OPS = {
+        .view = op_view,
+        .write_status = op_write_status,
+        .busy = op_busy,
+        .admit = op_admit,
+        .dispatch = op_dispatch,
+        .cancel = op_cancel,
+    };
+    ops->maybe_noise = &NOISE_OPS;
 }

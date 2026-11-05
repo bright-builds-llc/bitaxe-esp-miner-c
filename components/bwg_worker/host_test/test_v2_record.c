@@ -254,6 +254,43 @@ static void a_second_connection_is_refused_as_extra(void)
     ASSERT_EQ(s_record.first_failure.category, BWG_V2_FAILURE_EXTRA);
 }
 
+static void an_admitted_status_has_no_connection_failure_or_commitment(void)
+{
+    // Arrange
+    admit(BWG_V2_SCOPE_CHANNEL);
+    const bwg_v2_observation_t observation = observation_at(ADMIT_US + 1);
+
+    // Act
+    yyjson_doc *doc = status_doc(BWG_V2_SCOPE_CHANNEL, &s_record, &observation);
+
+    // Assert
+    ASSERT_TRUE(doc != NULL);
+    yyjson_val *root = yyjson_doc_get_root(doc);
+    yyjson_val *record = yyjson_obj_get(root, "record");
+    ASSERT_TRUE(yyjson_is_null(yyjson_obj_get(root, "connection")));
+    ASSERT_TRUE(yyjson_is_null(yyjson_obj_get(record, "firstFailure")));
+    ASSERT_TRUE(yyjson_is_null(yyjson_obj_get(record, "jobCommitment")));
+    yyjson_doc_free(doc);
+}
+
+static void a_connected_status_names_when_it_connected(void)
+{
+    // Arrange
+    const bwg_v2_socket_t socket = {.local_ipv4 = 0xc0a80102u, .local_port = 1, .remote_ipv4 = 0xc0a80103u, .remote_port = 2};
+    admit(BWG_V2_SCOPE_CHANNEL);
+    ASSERT_TRUE(bwg_v2_record_connected(&s_record, &socket, ADMIT_US + 1));
+    const bwg_v2_observation_t observation = observation_at(ADMIT_US + 2);
+
+    // Act
+    yyjson_doc *doc = status_doc(BWG_V2_SCOPE_CHANNEL, &s_record, &observation);
+
+    // Assert
+    ASSERT_TRUE(doc != NULL);
+    yyjson_val *connection = yyjson_obj_get(yyjson_doc_get_root(doc), "connection");
+    ASSERT_EQ(yyjson_get_uint(yyjson_obj_get(connection, "observedAtUs")), ADMIT_US + 1);
+    yyjson_doc_free(doc);
+}
+
 static void the_job_commitment_covers_the_four_frames_length_prefixed(void)
 {
     // Arrange
@@ -288,7 +325,7 @@ static void the_job_commitment_covers_the_four_frames_length_prefixed(void)
     feed_job_frames();
 
     // Assert
-    ASSERT_TRUE(s_record.has_job_commitment);
+    ASSERT_TRUE(bwg_v2_record_committed(&s_record));
     ASSERT_EQ(memcmp(s_record.job_commitment, expected, sizeof(expected)), 0);
     ASSERT_TRUE(bwg_v2_record_has_stage(&s_record, BWG_V2_STAGE_WORK_READY));
 }
@@ -328,7 +365,7 @@ static void a_share_joins_dispatch_nonce_write_and_ack(void)
     ASSERT_EQ(share->ack_at_us, at + 10);
     ASSERT_TRUE(bwg_v2_record_has_accepted_share(&s_record));
     ASSERT_TRUE(bwg_v2_record_has_stage(&s_record, BWG_V2_STAGE_ACCEPTED));
-    ASSERT_FALSE(s_record.has_first_failure);
+    ASSERT_FALSE(bwg_v2_record_failed(&s_record));
 }
 
 static void a_submit_without_its_nonce_must_not_be_sent(void)
@@ -559,6 +596,8 @@ void bwg_tests_v2_record(void)
     BWG_RUN(a_second_begin_in_flight_is_an_evidence_failure);
     BWG_RUN(a_clock_going_back_nulls_the_observed_time);
     BWG_RUN(a_second_connection_is_refused_as_extra);
+    BWG_RUN(an_admitted_status_has_no_connection_failure_or_commitment);
+    BWG_RUN(a_connected_status_names_when_it_connected);
     BWG_RUN(the_job_commitment_covers_the_four_frames_length_prefixed);
     BWG_RUN(a_job_frame_out_of_order_ends_the_attempt);
     BWG_RUN(a_share_joins_dispatch_nonce_write_and_ack);

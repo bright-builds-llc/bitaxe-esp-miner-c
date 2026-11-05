@@ -10,13 +10,14 @@ static const char *const STAGE_TEXT[] = {
     "socket_closed", "worker_quiescent", "admission", "fixture_ready", "candidate_inventory", "proof_received", "cleanup", "evidence",
 };
 static const char *const CATEGORY_TEXT[] = {
-    "preparation", "connect", "write", "read", "authentication", "proof", "authority_lost", "clock_invalid", "cleanup", "evidence_incomplete",
+    NULL, "preparation", "connect", "write", "read", "authentication", "proof", "authority_lost", "clock_invalid", "cleanup",
+    "evidence_incomplete",
 };
 static const char *const DETAIL_TEXT[] = {
     "timeout", "eof", "extra", "malformed", "io", "wrong_authority", "certificate_time", "session_replaced", "cancel_requested",
     "clock_discontinuity", "resource_unreleased", "missing", "duplicate", "rng", "allocation",
 };
-static const char *const OUTCOME_TEXT[] = {"accepted", "rejected", "cancelled", "expired", "incomplete"};
+static const char *const OUTCOME_TEXT[] = {NULL, "accepted", "rejected", "cancelled", "expired", "incomplete"};
 static const char *const SOCKET_TEXT[] = {"not_created", "open", "closed"};
 
 static uint64_t maybe_now(const bwg_noise_record_t *record, uint64_t now_us)
@@ -28,6 +29,16 @@ static void set_failure(bwg_noise_failure_t *failure, bwg_noise_stage_t stage, b
                         uint64_t at_us)
 {
     *failure = (bwg_noise_failure_t){.stage = stage, .category = category, .detail = detail, .at_us = at_us};
+}
+
+static bool present(const bwg_noise_failure_t *failure)
+{
+    return failure->category != BWG_NOISE_CATEGORY_NONE;
+}
+
+static bool terminal(const bwg_noise_record_t *record)
+{
+    return record->outcome != BWG_NOISE_OUTCOME_NONE;
 }
 
 bool bwg_noise_record_admit(bwg_noise_record_t *record, const char *attempt_id, const char *input_sha256,
@@ -58,7 +69,7 @@ bool bwg_noise_record_admit(bwg_noise_record_t *record, const char *attempt_id, 
 
 bool bwg_noise_record_permitted(const bwg_noise_record_t *record)
 {
-    return record->clock_valid && !record->has_first_failure && !record->has_terminal;
+    return record->clock_valid && !present(&record->first_failure) && !terminal(record);
 }
 
 bool bwg_noise_record_dispatch(bwg_noise_record_t *record, uint64_t now_us)
@@ -86,15 +97,13 @@ void bwg_noise_record_fail(bwg_noise_record_t *record, bwg_noise_stage_t stage, 
     if (detail == BWG_NOISE_DETAIL_CLOCK_DISCONTINUITY) {
         record->clock_valid = false;
     }
-    if (record->has_terminal) {
+    if (terminal(record)) {
         return;
     }
-    if (detail == BWG_NOISE_DETAIL_CLOCK_DISCONTINUITY && !record->has_resource_failure) {
-        record->has_resource_failure = true;
+    if (detail == BWG_NOISE_DETAIL_CLOCK_DISCONTINUITY && !present(&record->resource_failure)) {
         set_failure(&record->resource_failure, BWG_NOISE_AT_CLEANUP, BWG_NOISE_CATEGORY_CLOCK_INVALID, detail, BWG_NOISE_NONE);
     }
-    if (!record->has_first_failure) {
-        record->has_first_failure = true;
+    if (!present(&record->first_failure)) {
         set_failure(&record->first_failure, stage, category, detail, at_us);
     }
     record->state = BWG_NOISE_STATE_CANCELLING;
@@ -109,13 +118,10 @@ static void fail_clock(bwg_noise_record_t *record)
 static void end_incomplete(bwg_noise_record_t *record, uint64_t now_us)
 {
     const uint64_t at_us = maybe_now(record, now_us);
-    record->has_deadline_met = true;
-    record->deadline_met = false;
-    if (!record->has_resource_failure) {
-        record->has_resource_failure = true;
+    record->deadline_met = BWG_NOISE_DEADLINE_MISSED;
+    if (!present(&record->resource_failure)) {
         set_failure(&record->resource_failure, BWG_NOISE_AT_CLEANUP, BWG_NOISE_CATEGORY_CLEANUP, BWG_NOISE_DETAIL_RESOURCE_UNRELEASED, at_us);
     }
-    record->has_terminal = true;
     record->outcome = BWG_NOISE_OUTCOME_INCOMPLETE;
     record->decided_at_us = at_us;
     record->state = BWG_NOISE_STATE_TERMINAL;
@@ -123,7 +129,7 @@ static void end_incomplete(bwg_noise_record_t *record, uint64_t now_us)
 
 void bwg_noise_record_tick(bwg_noise_record_t *record, uint64_t now_us)
 {
-    if (record->has_terminal) {
+    if (terminal(record)) {
         return;
     }
     if (now_us < record->last_us || now_us > MAX_SAFE_INTEGER) {
@@ -197,7 +203,7 @@ void bwg_noise_record_socket_closed(bwg_noise_record_t *record, uint64_t now_us,
 
 static bwg_noise_outcome_t outcome_of(bwg_noise_record_t *record, uint64_t now_us)
 {
-    if (record->has_first_failure) {
+    if (present(&record->first_failure)) {
         switch (record->first_failure.detail) {
         case BWG_NOISE_DETAIL_TIMEOUT:
             return BWG_NOISE_OUTCOME_EXPIRED;
@@ -211,7 +217,6 @@ static bwg_noise_outcome_t outcome_of(bwg_noise_record_t *record, uint64_t now_u
     if (record->stage_count == BWG_NOISE_STAGE_COUNT && record->socket == BWG_NOISE_SOCKET_CLOSED && now_us < record->authority_deadline_us) {
         return BWG_NOISE_OUTCOME_ACCEPTED;
     }
-    record->has_first_failure = true;
     set_failure(&record->first_failure, BWG_NOISE_AT_EVIDENCE, BWG_NOISE_CATEGORY_EVIDENCE_INCOMPLETE, BWG_NOISE_DETAIL_MISSING, now_us);
     return BWG_NOISE_OUTCOME_REJECTED;
 }
@@ -225,11 +230,11 @@ void bwg_noise_record_joined(bwg_noise_record_t *record, uint64_t now_us)
     record->worker_quiescent = true;
     record->volatile_inputs_disposed = true;
     record->released_at_us = maybe_now(record, now_us);
-    if (!record->has_deadline_met) {
-        record->has_deadline_met = true;
-        record->deadline_met = record->clock_valid && now_us <= record->authority_deadline_us + BWG_NOISE_TAIL_US;
+    if (record->deadline_met == BWG_NOISE_DEADLINE_UNKNOWN) {
+        const bool met = record->clock_valid && now_us <= record->authority_deadline_us + BWG_NOISE_TAIL_US;
+        record->deadline_met = met ? BWG_NOISE_DEADLINE_MET : BWG_NOISE_DEADLINE_MISSED;
     }
-    if (record->has_terminal) {
+    if (terminal(record)) {
         return;
     }
     if (!record->clock_valid || record->socket == BWG_NOISE_SOCKET_OPEN) {
@@ -237,7 +242,6 @@ void bwg_noise_record_joined(bwg_noise_record_t *record, uint64_t now_us)
         return;
     }
     record->outcome = outcome_of(record, now_us);
-    record->has_terminal = true;
     record->decided_at_us = now_us;
     record->state = BWG_NOISE_STATE_TERMINAL;
 }
@@ -258,10 +262,10 @@ static void key_text(bwg_jw_t *writer, const char *key, const char *text)
     bwg_jw_cstr(writer, text);
 }
 
-static void key_failure(bwg_jw_t *writer, const char *key, bool present, const bwg_noise_failure_t *failure)
+static void key_failure(bwg_jw_t *writer, const char *key, const bwg_noise_failure_t *failure)
 {
     bwg_jw_key(writer, key);
-    if (!present) {
+    if (!present(failure)) {
         bwg_jw_null(writer);
         return;
     }
@@ -302,12 +306,12 @@ static void write_resources(bwg_jw_t *writer, const bwg_noise_record_t *record)
     key_value(writer, "deadlineAtUs", record->cleanup_deadline_at_us);
     key_value(writer, "releasedAtUs", record->released_at_us);
     bwg_jw_key(writer, "deadlineMet");
-    if (record->has_deadline_met) {
-        bwg_jw_bool(writer, record->deadline_met);
+    if (record->deadline_met != BWG_NOISE_DEADLINE_UNKNOWN) {
+        bwg_jw_bool(writer, record->deadline_met == BWG_NOISE_DEADLINE_MET);
     } else {
         bwg_jw_null(writer);
     }
-    key_failure(writer, "failure", record->has_resource_failure, &record->resource_failure);
+    key_failure(writer, "failure", &record->resource_failure);
     bwg_jw_object_end(writer);
 }
 
@@ -323,9 +327,9 @@ static void write_job(bwg_jw_t *writer, const bwg_noise_record_t *record)
     key_value(writer, "authorityDeadlineUs", record->authority_deadline_us);
     key_value(writer, "localSocketPort", record->local_socket_port);
     write_stages(writer, record);
-    key_failure(writer, "firstFailure", record->has_first_failure, &record->first_failure);
+    key_failure(writer, "firstFailure", &record->first_failure);
     bwg_jw_key(writer, "terminal");
-    if (record->has_terminal) {
+    if (terminal(record)) {
         bwg_jw_object_begin(writer);
         key_text(writer, "outcome", OUTCOME_TEXT[record->outcome]);
         key_value(writer, "decidedAtUs", record->decided_at_us);
@@ -352,10 +356,10 @@ static uint64_t observed_at(uint64_t observed_at_us, const bwg_noise_record_t *r
     latest = later(latest, record->decided_at_us);
     latest = later(latest, record->released_at_us);
     latest = later(latest, record->cleanup_started_at_us);
-    if (record->has_first_failure) {
+    if (present(&record->first_failure)) {
         latest = later(latest, record->first_failure.at_us);
     }
-    if (record->has_resource_failure) {
+    if (present(&record->resource_failure)) {
         latest = later(latest, record->resource_failure.at_us);
     }
     return latest;

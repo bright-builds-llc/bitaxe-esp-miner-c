@@ -214,12 +214,15 @@ void bwg_v2_gate_fill_ops(bwg_controller_ops_t *ops, GlobalState *GLOBAL_STATE)
         ESP_LOGE(TAG, "No memory for the V2 record: V2 attempts stay refused");
         return;
     }
-    ops->maybe_v2_view = op_view;
-    ops->maybe_v2_write_status = op_write_status;
-    ops->maybe_v2_busy = op_busy;
-    ops->maybe_v2_admit = op_admit;
-    ops->maybe_v2_dispatch = op_dispatch;
-    ops->maybe_v2_cancel = op_cancel;
+    static const bwg_v2_ops_t V2_OPS = {
+        .view = op_view,
+        .write_status = op_write_status,
+        .busy = op_busy,
+        .admit = op_admit,
+        .dispatch = op_dispatch,
+        .cancel = op_cancel,
+    };
+    ops->maybe_v2 = &V2_OPS;
 }
 
 bool bwg_v2_gate_seed_share(bwg_str_t attempt_id)

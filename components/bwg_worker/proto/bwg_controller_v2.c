@@ -66,29 +66,26 @@ static bool parse_query(const bwg_ctrl_request_t *request, v2_query_t *query)
     return !query->has_attempt_id || (bwg_json_get_str(attempt, &query->attempt_id) && attempt_id_is_valid(query->attempt_id));
 }
 
-static bool view_of(const bwg_controller_t *controller, bwg_v2_scope_t scope, bwg_v2_view_t *view)
+static bool view_of(const bwg_controller_t *controller, const bwg_v2_ops_t *v2, bwg_v2_scope_t scope, bwg_v2_view_t *view)
 {
-    const bwg_controller_ops_t *ops = &controller->ops;
     memset(view, 0, sizeof(*view));
-    return ops->maybe_v2_view(ops->ctx, scope, controller->generation, view);
+    return v2->view(controller->ops.ctx, scope, controller->generation, view);
 }
 
-static bwg_ctrl_error_t reply_status(const bwg_controller_t *controller, const bwg_ctrl_request_t *request, bwg_v2_scope_t scope,
-                                     const bwg_v2_observation_t *observation, bwg_ctrl_outcome_t *outcome)
+static bwg_ctrl_error_t reply_status(const bwg_controller_t *controller, const bwg_v2_ops_t *v2, const bwg_ctrl_request_t *request,
+                                     bwg_v2_scope_t scope, const bwg_v2_observation_t *observation, bwg_ctrl_outcome_t *outcome)
 {
-    const bwg_controller_ops_t *ops = &controller->ops;
     bwg_jw_t writer;
     if (!bwg_ctrl_reply_open(controller, outcome, request->request_id, BWG_V2_STATUS_BYTES + V2_ENVELOPE_BYTES, &writer)) {
         return BWG_CTRL_SESSION_FAILED;
     }
-    ops->maybe_v2_write_status(ops->ctx, scope, observation, &writer);
+    v2->write_status(controller->ops.ctx, scope, observation, &writer);
     return bwg_ctrl_reply_close(outcome, &writer);
 }
 
-static bwg_ctrl_error_t observe(bwg_controller_t *controller, const bwg_ctrl_request_t *request, uint64_t now_ms,
-                                bwg_ctrl_outcome_t *outcome)
+static bwg_ctrl_error_t observe(bwg_controller_t *controller, const bwg_v2_ops_t *v2, const bwg_ctrl_request_t *request,
+                                uint64_t now_ms, bwg_ctrl_outcome_t *outcome)
 {
-    const bwg_controller_ops_t *ops = &controller->ops;
     v2_query_t query;
     if (!parse_query(request, &query)) {
         return BWG_CTRL_INVALID_REQUEST;
@@ -99,14 +96,14 @@ static bwg_ctrl_error_t observe(bwg_controller_t *controller, const bwg_ctrl_req
         return BWG_CTRL_ADMISSION_REQUIRED;
     }
     bwg_v2_view_t view;
-    if (!view_of(controller, query.scope, &view)) {
+    if (!view_of(controller, v2, query.scope, &view)) {
         return BWG_CTRL_SESSION_FAILED;
     }
     if (!query.has_attempt_id && !view.has_record && !query.cancel && view.state == BWG_V2_STATE_IDLE) {
         if (bwg_ctrl_maybe_start_context(controller, now_ms) == NULL) {
             return BWG_CTRL_ADMISSION_REQUIRED;
         }
-        const bwg_ctrl_error_t error = reply_status(controller, request, query.scope, &view.observation, outcome);
+        const bwg_ctrl_error_t error = reply_status(controller, v2, request, query.scope, &view.observation, outcome);
         if (error != BWG_CTRL_OK) {
             return error;
         }
@@ -121,13 +118,13 @@ static bwg_ctrl_error_t observe(bwg_controller_t *controller, const bwg_ctrl_req
     }
     controller->has_v2_generation = true;
     controller->v2_generation = controller->generation;
-    if (query.cancel && view.state != BWG_V2_STATE_TERMINAL && !ops->maybe_v2_cancel(ops->ctx)) {
+    if (query.cancel && view.state != BWG_V2_STATE_TERMINAL && !v2->cancel(controller->ops.ctx)) {
         return BWG_CTRL_SESSION_FAILED;
     }
-    if (query.cancel && !view_of(controller, query.scope, &view)) {
+    if (query.cancel && !view_of(controller, v2, query.scope, &view)) {
         return BWG_CTRL_SESSION_FAILED;
     }
-    return reply_status(controller, request, query.scope, &view.observation, outcome);
+    return reply_status(controller, v2, request, query.scope, &view.observation, outcome);
 }
 
 bool bwg_ctrl_same_network(const bwg_v2_observation_t *current, const bwg_v2_observation_t *previous)
@@ -156,9 +153,10 @@ static bool parse_channel_start(yyjson_val *payload, bwg_v2_channel_input_t *inp
            bwg_stratum_v2_is_valid(input->endpoint, input->authority_public_key, input->user_identity);
 }
 
-static bwg_ctrl_error_t admit(bwg_controller_t *controller, const bwg_ctrl_request_t *request, uint64_t now_ms, bwg_ctrl_outcome_t *outcome)
+static bwg_ctrl_error_t admit(bwg_controller_t *controller, const bwg_v2_ops_t *v2, const bwg_ctrl_request_t *request,
+                              uint64_t now_ms, bwg_ctrl_outcome_t *outcome)
 {
-    const bwg_controller_ops_t *ops = &controller->ops;
+    void *ctx = controller->ops.ctx;
     if (bwg_ctrl_maybe_start_context(controller, now_ms) == NULL) {
         return BWG_CTRL_ADMISSION_REQUIRED;
     }
@@ -175,7 +173,7 @@ static bwg_ctrl_error_t admit(bwg_controller_t *controller, const bwg_ctrl_reque
         return BWG_CTRL_ADMISSION_REQUIRED;
     }
     bwg_v2_view_t view;
-    if (!view_of(controller, BWG_V2_SCOPE_CHANNEL, &view)) {
+    if (!view_of(controller, v2, BWG_V2_SCOPE_CHANNEL, &view)) {
         return BWG_CTRL_SESSION_FAILED;
     }
     if (controller->v2_observation_scope != BWG_V2_SCOPE_CHANNEL || !bwg_ctrl_same_network(&view.observation, &controller->v2_observation) ||
@@ -188,16 +186,17 @@ static bwg_ctrl_error_t admit(bwg_controller_t *controller, const bwg_ctrl_reque
     if (!bwg_ctrl_reply_open(controller, outcome, request->request_id, BWG_V2_STATUS_BYTES + V2_ENVELOPE_BYTES, &writer)) {
         return BWG_CTRL_SESSION_FAILED;
     }
-    if (!ops->maybe_v2_admit(ops->ctx, &input, controller->generation)) {
+    if (!v2->admit(ctx, &input, controller->generation)) {
         return BWG_CTRL_SESSION_FAILED;
     }
     controller->has_v2_generation = true;
     controller->v2_generation = controller->generation;
     controller->has_v2_observation = false;
-    ops->maybe_v2_write_status(ops->ctx, BWG_V2_SCOPE_CHANNEL, &view.observation, &writer);
+    v2->write_status(ctx, BWG_V2_SCOPE_CHANNEL, &view.observation, &writer);
     const bwg_ctrl_error_t error = bwg_ctrl_reply_close(outcome, &writer);
     if (error != BWG_CTRL_OK) {
-        ops->maybe_v2_cancel(ops->ctx);
+        // The reply's error is the one reported, whether or not the cancel succeeds.
+        (void) v2->cancel(ctx);
         return error;
     }
     outcome->effect.kind = BWG_CTRL_EFFECT_V2_DISPATCH;
@@ -208,15 +207,15 @@ static bwg_ctrl_error_t admit(bwg_controller_t *controller, const bwg_ctrl_reque
 bwg_ctrl_error_t bwg_ctrl_prepare_v2(bwg_controller_t *controller, const bwg_ctrl_request_t *request, uint64_t now_ms,
                                      bwg_ctrl_outcome_t *outcome)
 {
-    const bwg_controller_ops_t *ops = &controller->ops;
-    if (ops->maybe_v2_view == NULL || ops->maybe_v2_write_status == NULL) {
+    const bwg_v2_ops_t *maybe_v2 = controller->ops.maybe_v2;
+    if (maybe_v2 == NULL) {
         return BWG_CTRL_INVALID_REQUEST;
     }
     if (!controller->authenticated_logical_session || controller->has_pending_token) {
         return BWG_CTRL_ADMISSION_REQUIRED;
     }
-    return bwg_str_equals(request->command, "stratum_v2_channel_start") ? admit(controller, request, now_ms, outcome)
-                                                                        : observe(controller, request, now_ms, outcome);
+    return bwg_str_equals(request->command, "stratum_v2_channel_start") ? admit(controller, maybe_v2, request, now_ms, outcome)
+                                                                        : observe(controller, maybe_v2, request, now_ms, outcome);
 }
 
 bwg_ctrl_error_t bwg_ctrl_validate_v2_share_observation(bwg_controller_t *controller)
@@ -224,8 +223,9 @@ bwg_ctrl_error_t bwg_ctrl_validate_v2_share_observation(bwg_controller_t *contro
     if (!controller->has_v2_observation) {
         return BWG_CTRL_ADMISSION_REQUIRED;
     }
+    const bwg_v2_ops_t *maybe_v2 = controller->ops.maybe_v2;
     bwg_v2_view_t view;
-    if (controller->ops.maybe_v2_view == NULL || !view_of(controller, BWG_V2_SCOPE_SHARE, &view)) {
+    if (maybe_v2 == NULL || !view_of(controller, maybe_v2, BWG_V2_SCOPE_SHARE, &view)) {
         return BWG_CTRL_SESSION_FAILED;
     }
     if (controller->v2_observation_scope != BWG_V2_SCOPE_SHARE || view.state != BWG_V2_STATE_IDLE ||
@@ -239,7 +239,12 @@ bwg_ctrl_error_t bwg_ctrl_validate_v2_share_observation(bwg_controller_t *contro
 
 bwg_ctrl_error_t bwg_ctrl_confirm_v2_dispatch(bwg_controller_t *controller, const bwg_ctrl_effect_t *effect, uint64_t now_ms)
 {
-    const bwg_controller_ops_t *ops = &controller->ops;
+    const bwg_v2_ops_t *maybe_v2 = controller->ops.maybe_v2;
+    // Only an admitted attempt asks for a dispatch, and admitting needs the V2 ops.
+    if (maybe_v2 == NULL) {
+        return BWG_CTRL_STALE_RESPONSE;
+    }
+    void *ctx = controller->ops.ctx;
     bwg_ctrl_error_t error = bwg_ctrl_enforce_clock(controller, now_ms);
     if (error == BWG_CTRL_OK &&
         (bwg_ctrl_maybe_start_context(controller, now_ms) == NULL || effect->generation != controller->generation ||
@@ -247,10 +252,10 @@ bwg_ctrl_error_t bwg_ctrl_confirm_v2_dispatch(bwg_controller_t *controller, cons
          bwg_ctrl_lifecycle_holds_effect(&controller->lifecycle) || !controller->authenticated_logical_session)) {
         error = BWG_CTRL_STALE_RESPONSE;
     }
-    if (error == BWG_CTRL_OK && !ops->maybe_v2_dispatch(ops->ctx)) {
+    if (error == BWG_CTRL_OK && !maybe_v2->dispatch(ctx)) {
         error = BWG_CTRL_SESSION_FAILED;
     }
-    if (error != BWG_CTRL_OK && !ops->maybe_v2_cancel(ops->ctx)) {
+    if (error != BWG_CTRL_OK && !maybe_v2->cancel(ctx)) {
         return BWG_CTRL_SESSION_FAILED;
     }
     return error;

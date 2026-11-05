@@ -104,7 +104,7 @@ static void a_device_without_the_diagnostic_refuses_the_commands(void)
     // Arrange
     rig_t rig;
     ASSERT_TRUE(rig_open(&rig));
-    rig.controller.ops.maybe_noise_view = NULL;
+    rig.controller.ops.maybe_noise = NULL;
     ASSERT_TRUE(rig_admit(&rig, 2000));
 
     // Act

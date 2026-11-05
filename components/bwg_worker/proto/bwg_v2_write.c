@@ -8,7 +8,7 @@ static const char *const STAGE_TEXT[] = {
     "socket_closed", "worker_quiescent", "asic_dispatch", "nonce", "submission", "accepted", "revoked", "shutdown", "cooled",
 };
 static const char *const FAILURE_TEXT[] = {
-    "admission", "clock", "allocation", "authority", "timeout", "eof", "extra", "authentication", "protocol",
+    NULL, "admission", "clock", "allocation", "authority", "timeout", "eof", "extra", "authentication", "protocol",
     "channel_mismatch", "job_mismatch", "invalid_nonce", "rejected_share", "safety", "cleanup", "evidence",
 };
 static const char *const OPERATION_TEXT[BWG_V2_OP_COUNT] = {
@@ -145,7 +145,7 @@ void bwg_v2_write_record(bwg_jw_t *writer, const bwg_v2_record_t *record)
     key_value(writer, "poolSessionGeneration", record->pool_session_generation);
     key_value(writer, "poolTransportEpoch", record->pool_transport_epoch);
     key_value(writer, "serialTransportEpoch", record->serial_transport_epoch);
-    key_digest(writer, "jobCommitment", record->has_job_commitment, record->job_commitment);
+    key_digest(writer, "jobCommitment", bwg_v2_record_committed(record), record->job_commitment);
     key_value(writer, "observedAtUs", record->observed_at_us);
     bwg_jw_key(writer, "state");
     bwg_jw_cstr(writer, STATE_TEXT[record->state]);
@@ -178,7 +178,7 @@ void bwg_v2_write_record(bwg_jw_t *writer, const bwg_v2_record_t *record)
     }
     bwg_jw_array_end(writer);
     bwg_jw_key(writer, "firstFailure");
-    if (record->has_first_failure) {
+    if (bwg_v2_record_failed(record)) {
         write_failure(writer, &record->first_failure);
     } else {
         bwg_jw_null(writer);
@@ -241,7 +241,7 @@ static void write_observation(bwg_jw_t *writer, const bwg_v2_observation_t *obse
     bwg_jw_key(writer, "wifiConnected");
     bwg_jw_bool(writer, observation->wifi_connected);
     bwg_jw_key(writer, "socket");
-    if (maybe_record != NULL && maybe_record->has_connection && !maybe_record->socket_closed) {
+    if (maybe_record != NULL && maybe_record->connection_at_us != BWG_V2_NONE && !maybe_record->socket_closed) {
         write_socket(writer, &maybe_record->socket);
     } else {
         bwg_jw_null(writer);
@@ -252,7 +252,7 @@ static void write_observation(bwg_jw_t *writer, const bwg_v2_observation_t *obse
 static void write_connection(bwg_jw_t *writer, const bwg_v2_record_t *maybe_record)
 {
     bwg_jw_key(writer, "connection");
-    if (maybe_record == NULL || !maybe_record->has_connection) {
+    if (maybe_record == NULL || maybe_record->connection_at_us == BWG_V2_NONE) {
         bwg_jw_null(writer);
         return;
     }

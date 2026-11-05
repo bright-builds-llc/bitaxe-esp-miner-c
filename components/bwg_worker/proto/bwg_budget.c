@@ -370,6 +370,11 @@ bool bwg_budget_campaign_complete(const bwg_budget_t *budget)
     return atomic_load(&budget->campaign_complete);
 }
 
+uint32_t bwg_budget_stamp(uint32_t clock_ms)
+{
+    return clock_ms == 0 ? 1 : clock_ms;
+}
+
 bwg_budget_timing_t bwg_budget_timing(uint32_t first_work_ms, uint32_t closed_ms, uint32_t limit_ms, uint32_t deadline_ms,
                                       uint32_t now_ms)
 {

@@ -124,7 +124,7 @@ static void a_device_without_v2_refuses_the_commands(void)
     // Arrange
     rig_t rig;
     ASSERT_TRUE(rig_open(&rig));
-    rig.controller.ops.maybe_v2_view = NULL;
+    rig.controller.ops.maybe_v2 = NULL;
     ASSERT_TRUE(rig_admit(&rig, 2000));
 
     // Act
@@ -132,6 +132,22 @@ static void a_device_without_v2_refuses_the_commands(void)
 
     // Assert
     ASSERT_EQ(error, BWG_CTRL_INVALID_REQUEST);
+    rig_close(&rig);
+}
+
+static void a_dispatch_without_v2_is_stale(void)
+{
+    // Arrange
+    rig_t rig;
+    ASSERT_TRUE(rig_open(&rig));
+    rig.controller.ops.maybe_v2 = NULL;
+    const bwg_ctrl_effect_t effect = {.kind = BWG_CTRL_EFFECT_V2_DISPATCH, .generation = rig.controller.generation};
+
+    // Act
+    const bwg_ctrl_error_t error = bwg_controller_confirm_sent(&rig.controller, &effect, NOW_MS);
+
+    // Assert
+    ASSERT_EQ(error, BWG_CTRL_STALE_RESPONSE);
     rig_close(&rig);
 }
 
@@ -513,6 +529,7 @@ void bwg_tests_controller_v2(void)
     BWG_RUN(an_idle_status_needs_possession);
     BWG_RUN(a_query_with_extra_fields_is_invalid);
     BWG_RUN(a_device_without_v2_refuses_the_commands);
+    BWG_RUN(a_dispatch_without_v2_is_stale);
     BWG_RUN(a_channel_start_needs_a_prior_idle_status);
     BWG_RUN(an_unconfirmed_status_does_not_admit_a_start);
     BWG_RUN(a_channel_starts_only_after_its_reply_was_sent);

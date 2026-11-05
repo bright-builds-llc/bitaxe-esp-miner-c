@@ -95,6 +95,38 @@ typedef struct {
     char input_sha256[BWG_NOISE_DIGEST_TEXT_SIZE];
 } bwg_noise_input_t;
 
+/** A device's Stratum V2 attempts. Each call gets the controller ops' `ctx`. */
+typedef struct {
+    /** Reads a V2 scope for this session. False when it can't. */
+    bool (*view)(void *ctx, bwg_v2_scope_t scope, uint64_t generation, bwg_v2_view_t *view);
+    /** Writes a V2 status of this observation, which is what a later command must name. */
+    void (*write_status)(void *ctx, bwg_v2_scope_t scope, const bwg_v2_observation_t *observation, bwg_jw_t *writer);
+    /** Whether a V2 attempt still holds the network or its fence. */
+    bool (*busy)(void *ctx);
+    /** Admits a channel attempt without starting it. */
+    bool (*admit)(void *ctx, const bwg_v2_channel_input_t *input, uint64_t generation);
+    /** Starts the admitted channel attempt, once its reply was sent. */
+    bool (*dispatch)(void *ctx);
+    /** Cancels a channel attempt. */
+    bool (*cancel)(void *ctx);
+} bwg_v2_ops_t;
+
+/** A device's Noise diagnostic. Each call gets the controller ops' `ctx`. */
+typedef struct {
+    /** Reads the diagnostic for this session. False when it can't. */
+    bool (*view)(void *ctx, uint64_t generation, bwg_noise_view_t *view);
+    /** Writes a diagnostic status of this observation, which is what a later Start must name. */
+    void (*write_status)(void *ctx, const bwg_v2_observation_t *observation, bwg_jw_t *writer);
+    /** Whether a diagnostic still holds the network. */
+    bool (*busy)(void *ctx);
+    /** Admits a diagnostic without starting it. */
+    bool (*admit)(void *ctx, const bwg_noise_input_t *input, const bwg_v2_observation_t *observation);
+    /** Starts the admitted diagnostic, once its reply was sent. */
+    bool (*dispatch)(void *ctx);
+    /** Cancels a diagnostic. */
+    bool (*cancel)(void *ctx);
+} bwg_noise_ops_t;
+
 /** Everything the controller asks of the device. Every call runs on the owner task, and may block it. */
 typedef struct {
     void *ctx;
@@ -151,30 +183,10 @@ typedef struct {
     void (*maybe_write_cadence)(void *ctx, bwg_jw_t *writer);
     /** Optional. A transport probe of the largest size is about to be answered. */
     void (*maybe_note_max_probe)(void *ctx);
-    /** Optional. Reads a V2 scope for this session. False when it can't. Without it the V2 commands are refused. */
-    bool (*maybe_v2_view)(void *ctx, bwg_v2_scope_t scope, uint64_t generation, bwg_v2_view_t *view);
-    /** Writes a V2 status of this observation, which is what a later command must name. */
-    void (*maybe_v2_write_status)(void *ctx, bwg_v2_scope_t scope, const bwg_v2_observation_t *observation, bwg_jw_t *writer);
-    /** Whether a V2 attempt still holds the network or its fence. */
-    bool (*maybe_v2_busy)(void *ctx);
-    /** Admits a channel attempt without starting it. */
-    bool (*maybe_v2_admit)(void *ctx, const bwg_v2_channel_input_t *input, uint64_t generation);
-    /** Starts the admitted channel attempt, once its reply was sent. */
-    bool (*maybe_v2_dispatch)(void *ctx);
-    /** Cancels a channel attempt. */
-    bool (*maybe_v2_cancel)(void *ctx);
-    /** Optional. Reads the Noise diagnostic for this session. False when it can't. Without it the commands are refused. */
-    bool (*maybe_noise_view)(void *ctx, uint64_t generation, bwg_noise_view_t *view);
-    /** Writes a diagnostic status of this observation, which is what a later Start must name. */
-    void (*maybe_noise_write_status)(void *ctx, const bwg_v2_observation_t *observation, bwg_jw_t *writer);
-    /** Whether a diagnostic still holds the network. */
-    bool (*maybe_noise_busy)(void *ctx);
-    /** Admits a diagnostic without starting it. */
-    bool (*maybe_noise_admit)(void *ctx, const bwg_noise_input_t *input, const bwg_v2_observation_t *observation);
-    /** Starts the admitted diagnostic, once its reply was sent. */
-    bool (*maybe_noise_dispatch)(void *ctx);
-    /** Cancels a diagnostic. */
-    bool (*maybe_noise_cancel)(void *ctx);
+    /** Optional, and whole when present. Without it the V2 commands are refused. */
+    const bwg_v2_ops_t *maybe_v2;
+    /** Optional, and whole when present. Without it the Noise diagnostic commands are refused. */
+    const bwg_noise_ops_t *maybe_noise;
 } bwg_controller_ops_t;
 
 /** Replaces the deployment-trust check, for fixtures that carry no real signature. */

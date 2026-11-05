@@ -98,6 +98,9 @@ typedef struct {
     uint32_t remaining_ms;
 } bwg_budget_timing_t;
 
+/** A clock reading as a stamp, which is never 0: 0 means unset, so a reading taken as the clock wraps counts 1 ms later. */
+uint32_t bwg_budget_stamp(uint32_t clock_ms);
+
 /**
  * `first_work_ms` and `closed_ms` are 0 when unset, and clocks wrap, so times compare by signed
  * difference. A `limit_ms` of 0 means none. Active time never reads past the limit.

@@ -12,7 +12,8 @@
 bool bwg_ctrl_attempt_busy(const bwg_controller_t *controller)
 {
     const bwg_controller_ops_t *ops = &controller->ops;
-    return (ops->maybe_v2_busy != NULL && ops->maybe_v2_busy(ops->ctx)) || (ops->maybe_noise_busy != NULL && ops->maybe_noise_busy(ops->ctx));
+    const bool v2_busy = ops->maybe_v2 != NULL && ops->maybe_v2->busy(ops->ctx);
+    return v2_busy || (ops->maybe_noise != NULL && ops->maybe_noise->busy(ops->ctx));
 }
 
 static bool attempt_id_is_valid(bwg_str_t attempt_id)
@@ -26,22 +27,21 @@ static bool schema_is(yyjson_val *payload, const char *expected)
     return bwg_json_get_str(bwg_json_maybe_field(payload, "schema"), &schema) && bwg_str_equals(schema, expected);
 }
 
-static bool view_of(const bwg_controller_t *controller, bwg_noise_view_t *view)
+static bool view_of(const bwg_controller_t *controller, const bwg_noise_ops_t *noise, bwg_noise_view_t *view)
 {
-    const bwg_controller_ops_t *ops = &controller->ops;
     memset(view, 0, sizeof(*view));
-    return ops->maybe_noise_view(ops->ctx, controller->generation, view);
+    return noise->view(controller->ops.ctx, controller->generation, view);
 }
 
-static bwg_ctrl_error_t reply_status(const bwg_controller_t *controller, const bwg_ctrl_request_t *request,
-                                     const bwg_v2_observation_t *observation, bwg_ctrl_outcome_t *outcome)
+static bwg_ctrl_error_t reply_status(const bwg_controller_t *controller, const bwg_noise_ops_t *noise,
+                                     const bwg_ctrl_request_t *request, const bwg_v2_observation_t *observation,
+                                     bwg_ctrl_outcome_t *outcome)
 {
-    const bwg_controller_ops_t *ops = &controller->ops;
     bwg_jw_t writer;
     if (!bwg_ctrl_reply_open(controller, outcome, request->request_id, BWG_NOISE_STATUS_BYTES + NOISE_ENVELOPE_BYTES, &writer)) {
         return BWG_CTRL_SESSION_FAILED;
     }
-    ops->maybe_noise_write_status(ops->ctx, observation, &writer);
+    noise->write_status(controller->ops.ctx, observation, &writer);
     return bwg_ctrl_reply_close(outcome, &writer);
 }
 
@@ -56,10 +56,9 @@ static bool parse_query(yyjson_val *payload, bool *has_attempt_id, bwg_str_t *at
     return !*has_attempt_id || (bwg_json_get_str(attempt, attempt_id) && attempt_id_is_valid(*attempt_id));
 }
 
-static bwg_ctrl_error_t observe(bwg_controller_t *controller, const bwg_ctrl_request_t *request, uint64_t now_ms,
-                                bwg_ctrl_outcome_t *outcome)
+static bwg_ctrl_error_t observe(bwg_controller_t *controller, const bwg_noise_ops_t *noise, const bwg_ctrl_request_t *request,
+                                uint64_t now_ms, bwg_ctrl_outcome_t *outcome)
 {
-    const bwg_controller_ops_t *ops = &controller->ops;
     const bool cancel = bwg_str_equals(request->command, "noise_diagnostic_cancel");
     bool has_attempt_id = false;
     bwg_str_t attempt_id = {0};
@@ -72,14 +71,14 @@ static bwg_ctrl_error_t observe(bwg_controller_t *controller, const bwg_ctrl_req
         return BWG_CTRL_ADMISSION_REQUIRED;
     }
     bwg_noise_view_t view;
-    if (!view_of(controller, &view)) {
+    if (!view_of(controller, noise, &view)) {
         return BWG_CTRL_SESSION_FAILED;
     }
     if (!has_attempt_id && !view.has_record && !cancel) {
         if (bwg_ctrl_maybe_start_context(controller, now_ms) == NULL) {
             return BWG_CTRL_ADMISSION_REQUIRED;
         }
-        const bwg_ctrl_error_t error = reply_status(controller, request, &view.observation, outcome);
+        const bwg_ctrl_error_t error = reply_status(controller, noise, request, &view.observation, outcome);
         if (error != BWG_CTRL_OK) {
             return error;
         }
@@ -93,13 +92,13 @@ static bwg_ctrl_error_t observe(bwg_controller_t *controller, const bwg_ctrl_req
     }
     controller->has_noise_generation = true;
     controller->noise_generation = controller->generation;
-    if (cancel && !view.terminal && !ops->maybe_noise_cancel(ops->ctx)) {
+    if (cancel && !view.terminal && !noise->cancel(controller->ops.ctx)) {
         return BWG_CTRL_SESSION_FAILED;
     }
-    if (cancel && !view_of(controller, &view)) {
+    if (cancel && !view_of(controller, noise, &view)) {
         return BWG_CTRL_SESSION_FAILED;
     }
-    return reply_status(controller, request, &view.observation, outcome);
+    return reply_status(controller, noise, request, &view.observation, outcome);
 }
 
 static bool parse_start(yyjson_val *payload, bwg_noise_input_t *input, uint64_t *boot_ordinal, uint64_t *observed_at_us)
@@ -137,9 +136,10 @@ static bool hash_input(yyjson_val *payload, char text[BWG_NOISE_DIGEST_TEXT_SIZE
     return true;
 }
 
-static bwg_ctrl_error_t admit(bwg_controller_t *controller, const bwg_ctrl_request_t *request, uint64_t now_ms, bwg_ctrl_outcome_t *outcome)
+static bwg_ctrl_error_t admit(bwg_controller_t *controller, const bwg_noise_ops_t *noise, const bwg_ctrl_request_t *request,
+                              uint64_t now_ms, bwg_ctrl_outcome_t *outcome)
 {
-    const bwg_controller_ops_t *ops = &controller->ops;
+    void *ctx = controller->ops.ctx;
     if (bwg_ctrl_maybe_start_context(controller, now_ms) == NULL) {
         return BWG_CTRL_ADMISSION_REQUIRED;
     }
@@ -156,7 +156,7 @@ static bwg_ctrl_error_t admit(bwg_controller_t *controller, const bwg_ctrl_reque
         return BWG_CTRL_ADMISSION_REQUIRED;
     }
     bwg_noise_view_t view;
-    if (!view_of(controller, &view)) {
+    if (!view_of(controller, noise, &view)) {
         return BWG_CTRL_SESSION_FAILED;
     }
     if (view.has_record || !bwg_ctrl_same_network(&view.observation, &controller->noise_observation) ||
@@ -169,16 +169,17 @@ static bwg_ctrl_error_t admit(bwg_controller_t *controller, const bwg_ctrl_reque
     if (!bwg_ctrl_reply_open(controller, outcome, request->request_id, BWG_NOISE_STATUS_BYTES + NOISE_ENVELOPE_BYTES, &writer)) {
         return BWG_CTRL_SESSION_FAILED;
     }
-    if (!ops->maybe_noise_admit(ops->ctx, &input, &view.observation)) {
+    if (!noise->admit(ctx, &input, &view.observation)) {
         return BWG_CTRL_SESSION_FAILED;
     }
     controller->has_noise_generation = true;
     controller->noise_generation = controller->generation;
     controller->has_noise_observation = false;
-    ops->maybe_noise_write_status(ops->ctx, &view.observation, &writer);
+    noise->write_status(ctx, &view.observation, &writer);
     const bwg_ctrl_error_t error = bwg_ctrl_reply_close(outcome, &writer);
     if (error != BWG_CTRL_OK) {
-        ops->maybe_noise_cancel(ops->ctx);
+        // The reply's error is the one reported, whether or not the cancel succeeds.
+        (void) noise->cancel(ctx);
         return error;
     }
     outcome->effect.kind = BWG_CTRL_EFFECT_NOISE_DISPATCH;
@@ -189,20 +190,25 @@ static bwg_ctrl_error_t admit(bwg_controller_t *controller, const bwg_ctrl_reque
 bwg_ctrl_error_t bwg_ctrl_prepare_noise(bwg_controller_t *controller, const bwg_ctrl_request_t *request, uint64_t now_ms,
                                         bwg_ctrl_outcome_t *outcome)
 {
-    const bwg_controller_ops_t *ops = &controller->ops;
-    if (ops->maybe_noise_view == NULL || ops->maybe_noise_write_status == NULL) {
+    const bwg_noise_ops_t *maybe_noise = controller->ops.maybe_noise;
+    if (maybe_noise == NULL) {
         return BWG_CTRL_INVALID_REQUEST;
     }
     if (!controller->authenticated_logical_session || controller->has_pending_token) {
         return BWG_CTRL_ADMISSION_REQUIRED;
     }
-    return bwg_str_equals(request->command, "noise_diagnostic_start") ? admit(controller, request, now_ms, outcome)
-                                                                      : observe(controller, request, now_ms, outcome);
+    return bwg_str_equals(request->command, "noise_diagnostic_start") ? admit(controller, maybe_noise, request, now_ms, outcome)
+                                                                      : observe(controller, maybe_noise, request, now_ms, outcome);
 }
 
 bwg_ctrl_error_t bwg_ctrl_confirm_noise_dispatch(bwg_controller_t *controller, const bwg_ctrl_effect_t *effect, uint64_t now_ms)
 {
-    const bwg_controller_ops_t *ops = &controller->ops;
+    const bwg_noise_ops_t *maybe_noise = controller->ops.maybe_noise;
+    // Only an admitted diagnostic asks for a dispatch, and admitting needs the Noise ops.
+    if (maybe_noise == NULL) {
+        return BWG_CTRL_STALE_RESPONSE;
+    }
+    void *ctx = controller->ops.ctx;
     bwg_ctrl_error_t error = bwg_ctrl_enforce_clock(controller, now_ms);
     if (error == BWG_CTRL_OK &&
         (bwg_ctrl_maybe_start_context(controller, now_ms) == NULL || effect->generation != controller->generation ||
@@ -210,10 +216,10 @@ bwg_ctrl_error_t bwg_ctrl_confirm_noise_dispatch(bwg_controller_t *controller, c
          bwg_ctrl_lifecycle_holds_effect(&controller->lifecycle) || !controller->authenticated_logical_session)) {
         error = BWG_CTRL_STALE_RESPONSE;
     }
-    if (error == BWG_CTRL_OK && !ops->maybe_noise_dispatch(ops->ctx)) {
+    if (error == BWG_CTRL_OK && !maybe_noise->dispatch(ctx)) {
         error = BWG_CTRL_SESSION_FAILED;
     }
-    if (error != BWG_CTRL_OK && !ops->maybe_noise_cancel(ops->ctx)) {
+    if (error != BWG_CTRL_OK && !maybe_noise->cancel(ctx)) {
         return BWG_CTRL_SESSION_FAILED;
     }
     return error;

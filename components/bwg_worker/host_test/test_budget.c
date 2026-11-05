@@ -565,6 +565,32 @@ static void timing_survives_the_clock_wrapping(void)
     ASSERT_EQ(timing.remaining_ms, 19000);
 }
 
+static void a_stamp_keeps_a_nonzero_reading(void)
+{
+    // Act / Assert
+    ASSERT_EQ(bwg_budget_stamp(12345), 12345u);
+}
+
+static void a_stamp_at_the_wrap_is_never_unset(void)
+{
+    // Act / Assert
+    ASSERT_EQ(bwg_budget_stamp(0), 1u);
+}
+
+static void a_lease_closed_as_the_clock_wraps_still_reads_as_closed(void)
+{
+    // Arrange
+    const uint32_t first = UINT32_MAX - 999;
+    const uint32_t closed = bwg_budget_stamp(0);
+
+    // Act
+    const bwg_budget_timing_t timing = bwg_budget_timing(first, closed, 30000, first + 30000, first + 20000);
+
+    // Assert
+    ASSERT_EQ(timing.active_ms, 1001u);
+    ASSERT_EQ(timing.remaining_ms, 0u);
+}
+
 void bwg_tests_budget(void)
 {
     BWG_RUN(an_unlimited_lease_on_a_fresh_device_writes_nothing);
@@ -588,4 +614,7 @@ void bwg_tests_budget(void)
     BWG_RUN(active_time_stops_at_the_limit_and_remaining_reaches_zero);
     BWG_RUN(no_limit_or_no_work_has_nothing_remaining);
     BWG_RUN(timing_survives_the_clock_wrapping);
+    BWG_RUN(a_stamp_keeps_a_nonzero_reading);
+    BWG_RUN(a_stamp_at_the_wrap_is_never_unset);
+    BWG_RUN(a_lease_closed_as_the_clock_wraps_still_reads_as_closed);
 }

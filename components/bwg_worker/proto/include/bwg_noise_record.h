@@ -55,7 +55,9 @@ typedef enum {
 } bwg_noise_stage_t;
 
 typedef enum {
-    BWG_NOISE_CATEGORY_PREPARATION = 0,
+    /** No failure: a failure slot holds this until one comes. */
+    BWG_NOISE_CATEGORY_NONE = 0,
+    BWG_NOISE_CATEGORY_PREPARATION,
     BWG_NOISE_CATEGORY_CONNECT,
     BWG_NOISE_CATEGORY_WRITE,
     BWG_NOISE_CATEGORY_READ,
@@ -86,12 +88,21 @@ typedef enum {
 } bwg_noise_detail_t;
 
 typedef enum {
-    BWG_NOISE_OUTCOME_ACCEPTED = 0,
+    /** Not yet terminal. */
+    BWG_NOISE_OUTCOME_NONE = 0,
+    BWG_NOISE_OUTCOME_ACCEPTED,
     BWG_NOISE_OUTCOME_REJECTED,
     BWG_NOISE_OUTCOME_CANCELLED,
     BWG_NOISE_OUTCOME_EXPIRED,
     BWG_NOISE_OUTCOME_INCOMPLETE,
 } bwg_noise_outcome_t;
+
+/** Whether cleanup finished within the attempt's tail, known once the worker returns or cleanup gives up. */
+typedef enum {
+    BWG_NOISE_DEADLINE_UNKNOWN = 0,
+    BWG_NOISE_DEADLINE_MET,
+    BWG_NOISE_DEADLINE_MISSED,
+} bwg_noise_deadline_t;
 
 typedef enum {
     BWG_NOISE_SOCKET_NOT_CREATED = 0,
@@ -126,9 +137,9 @@ typedef struct {
     uint64_t local_socket_port;
     uint32_t stage_count;
     bwg_noise_stage_row_t stages[BWG_NOISE_STAGE_COUNT];
-    bool has_first_failure;
+    /** Its category is BWG_NOISE_CATEGORY_NONE until the first failure. */
     bwg_noise_failure_t first_failure;
-    bool has_terminal;
+    /** BWG_NOISE_OUTCOME_NONE until the record is terminal. */
     bwg_noise_outcome_t outcome;
     uint64_t decided_at_us;
     bwg_noise_socket_t socket;
@@ -137,9 +148,8 @@ typedef struct {
     uint64_t cleanup_started_at_us;
     uint64_t cleanup_deadline_at_us;
     uint64_t released_at_us;
-    bool has_deadline_met;
-    bool deadline_met;
-    bool has_resource_failure;
+    bwg_noise_deadline_t deadline_met;
+    /** Its category is BWG_NOISE_CATEGORY_NONE unless cleanup itself failed. */
     bwg_noise_failure_t resource_failure;
     uint64_t last_us;
     bool clock_valid;
