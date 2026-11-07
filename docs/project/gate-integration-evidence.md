@@ -376,6 +376,26 @@ Non-claims: one run of each, on the 601 only. Whether the readings before the po
 
 **`miningActivity` during a lease.** The HTTP log showed this tree reporting `paused` all through a lease that started from a paused board, while the chip hashed at 13.7 W, because the local pause is held for when the lease ends. Rust reports `active` once a pool's work is queued. The label now reads `active` while a lease is in force and has had its first work. On the 601, a test-authority build of `0df71f3` with that change, `esp-miner.bin` SHA-256 starting `6d1e14edb355072d`, read `paused`, then `active` from 11 s, as the Start replied in 10,200 ms, then `stopping` at the operator stop and `paused` after it, with 5 shares accepted. Non-claims: one lease, and the change is uncommitted, so that image reports `-dirty`. A local pause and resume weren't rerun, though the change applies only while a lease is in force.
 
+## The lifecycle rerun on the 601
+
+`3aed144` replaced the controller's lifecycle flags with one state type, and the board evidence above predates it. On 2026-11-07, on the Gamma 601, a test-authority image of `247d2cd` reran the steps that drive the lease, stop, cooling and reboot-marker transitions, in one sitting, with the Gate at `93cae86` from a clean clone. The image was built from an empty build directory in a fresh worktree. It reports `v2.15.2rc0-80-g247d2cd`, not dirty. `esp-miner.bin` SHA-256 is `383ed6fb20a85224de6748ec0cb2f7b0d982b82d0b6e6f21ca85569d6d8c00e4` and ELF SHA-256 is `d674f10a54ea4be98bb777b4d2daa78a4750f843b23b5e23847f08579bc03561`. It holds the test authority's key IDs and none of the owner's. The board was matched by base-MAC digest before each ROM write, NVS was kept, and the owner's reference image of the same commit was put back afterwards.
+
+| Step | Result |
+|---|---|
+| Harness | `connect`, `start_abort`, `limit_fault`, `reviews`, `replay`, `lease_stop`, `expiry`, `heartbeat_loss`, `reboot`, `operator_pause` and `mining` completed, each ending at `baseline` with restoration `confirmed`. Reasons are the same as before: `connectivity_lost` after `heartbeat_timeout` and `unsafe_observation`, `monotonic_reset`, `paused`, `lease_expired`, `reboot`. The replayed Start was `command_rejected`. A local pause during a lease reported `unsafe_observation`, as on the 205's earlier image, 5 of 5. The `mining` lease ran 313,447 ms with 15 renewals, 17 accepted and 0 rejected. Stops took 48,218 and 47,472 ms |
+| The Gate's eight pages, in Chrome | All eight closed with no first failure and the same device reasons as before. Start replies took 10.27 to 10.39 s |
+| `attempt_normal`, `attempt_foreground`, `attempt_heartbeat` | Ordinals 59, 60 and 61 passed the window judge. `normal` 178,329 ms active, 9 renewals, 14 accepted, 0 rejected, 67 nonces. The other two ended `heartbeat_timeout` at `fan_paused`. Each window's cooling review was saved with the budget unchanged |
+| `restart` | Stage `complete`, acknowledgement matched, boot ordinal 12 to 13, software reset seen, identity matched, 0 port reopens, 7,155 ms |
+| Fan stop | Duty 0 ended the lease as `zero_fan`, reason `unsafe_observation`, 1,033 ms after the last safe sample. The stop drove the fan to 100%, and settings were restored |
+
+The three behaviours `3aed144` names:
+
+- **Restoration:** every lease in the run ended in a confirmed restoration with its reason.
+- **Reboot marker:** after a restart during a lease, the harness's next session read generation 0 and restoration `confirmed` with `reboot`, and the page's `reboot` scenario read the same. The following lease started at generation 1.
+- **Stop retries:** not reached. The board log of every harness lease read `Lease stop finished ok=1`, 11 of 11, and no board log kept from this or any earlier image holds `ok=0` or "Stop did not finish". A failed stop has never happened on hardware here, so the retry states rest on the host tests alone.
+
+Non-claims: one run of each, on the 601 only, and the 205 wasn't run. The campaign windows, V2 and Noise, the pool and V2 faults, the guards, the core dump, `soak` and `cadence` weren't rerun, since they repeat these transitions without adding any. Both images report the same version string, so the flash's own hash check tells them apart, not `version`.
+
 ## Differences from Rust
 
 By decision:
