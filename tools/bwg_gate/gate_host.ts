@@ -87,11 +87,11 @@ function newController() {
   const port = bridgedPort();
   const runtime = {
     serial: { requestPort: async () => port, getPorts: async () => [port] },
-    foreground: () => true,
+    foreground: () => true, pageOpen: () => true,
     userActivation: () => true,
     now: () => performance.now(),
     acquireLock: async () => () => {},
-    subscribeForegroundLoss: () => () => {},
+    subscribePageExit: () => () => {},
     every: (ms: number, listener: () => void) => { const timer = setInterval(listener, ms); return () => clearInterval(timer); },
   };
   return createWebSerialWorkerController({
@@ -162,6 +162,7 @@ async function startLease(controller: any, id: string, duration: number, renewAf
   return { request, binding };
 }
 
+const reportTimedStop = async (controller: any, stop: () => Promise<unknown>) => { const before = performance.now(); const status = await stop(); report("stopped", { stopMs: Math.round(performance.now() - before), status: publicStatus(status) }); await controller.close(); };
 async function renew(controller: any, lease: { request: any; binding: string }) {
   const { leaseId, protocolVersion, durationMilliseconds, renewAfterMilliseconds } = lease.request;
   const request = { protocolVersion, leaseId, durationMilliseconds, renewAfterMilliseconds };
@@ -454,10 +455,13 @@ const scenarios: Record<string, () => Promise<void>> = {
     await watch(controller, 20_000);
     await renew(controller, lease);
     await watch(controller, 25_000);
-    const before = performance.now();
-    const status = await controller.pause();
-    report("stopped", { stopMs: Math.round(performance.now() - before), status: publicStatus(status) });
-    await controller.close();
+    await reportTimedStop(controller, () => controller.pause());
+  },
+  // The restoration the Gate's page asks for once a Gate Pass is issued, during mining.
+  async restore_satisfied() {
+    const controller = await connect();
+    await startLease(controller, `restore${Date.now()}`, 60_000, 20_000).then(() => watch(controller, 20_000));
+    await reportTimedStop(controller, () => controller.restore("challenge_satisfied"));
   },
   // A long lease kept alive by renewals, to show accepted shares.
   async mining() {
@@ -468,10 +472,7 @@ const scenarios: Record<string, () => Promise<void>> = {
       await renew(controller, lease);
     }
     await watch(controller, 5_000);
-    const before = performance.now();
-    const status = await controller.pause();
-    report("stopped", { stopMs: Math.round(performance.now() - before), status: publicStatus(status) });
-    await controller.close();
+    await reportTimedStop(controller, () => controller.pause());
   },
   // The device restarts under a running lease; the next session must report it.
   async reboot() {

@@ -99,11 +99,11 @@ async function awaitBaseline(limitMs: number) {
 }
 
 /** The tab really goes to the background: the page's SDK ends the session, and only the device stops the work. */
-async function hideTab() {
-  const { result } = await page.send("Target.createTarget", { url: "about:blank", background: false });
+/** Leaving the page ends the session; hiding it no longer does (turnstile ADR-0110). Returns as from the back/forward cache, so the page keeps its state. */
+async function leavePage() {
+  await page.evaluate(`dispatchEvent(new PageTransitionEvent("pagehide", { persisted: true }))`);
   await sleep(FAULT_STOP_MS);
-  await page.send("Target.closeTarget", { targetId: result.targetId });
-  await page.send("Page.bringToFront");
+  await page.evaluate(`dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }))`);
 }
 
 /** Reads the finished lease after a fault, over a fresh connection, for the records the judge needs. */
@@ -303,11 +303,11 @@ const finishCampaign = async () => { await step("close"); await sleep(500); };
 
 const plans: Record<string, { query: string; run: () => Promise<unknown> }> = {
   campaign_normal: { query: "kind=campaign&window=0", async run() { await beginWindow(); await awaitBaseline(STOP_WINDOW_MS); await finishCampaign(); } },
-  campaign_foreground: { query: "kind=campaign&window=1", async run() { await beginWindow(); await awaitNonces(20_000); await step("armForegroundLoss"); await hideTab(); await reviewAfterFault(); await finishCampaign(); } },
+  campaign_foreground: { query: "kind=campaign&window=1", async run() { await beginWindow(); await awaitNonces(20_000); await step("armForegroundLoss"); await leavePage(); await reviewAfterFault(); await finishCampaign(); } },
   campaign_heartbeat: { query: "kind=campaign&window=2", async run() { await beginWindow(); await awaitNonces(20_000); await step("suppressHeartbeats"); await sleep(FAULT_STOP_MS); await reviewAfterFault(); await finishCampaign(); } },
   attempt_diagnostic: { query: "kind=attempt&purpose=diagnostic", async run() { await beginWindow(); await awaitBaseline(STOP_WINDOW_MS); await finishAttempt(); } },
   attempt_normal: { query: "kind=attempt&purpose=normal", async run() { await beginWindow(); await awaitBaseline(STOP_WINDOW_MS); await finishAttempt(); } },
-  attempt_foreground: { query: "kind=attempt&purpose=foreground_loss", async run() { await beginWindow(); await awaitNonces(20_000); await step("armForegroundLoss"); await hideTab(); await reviewAfterFault(); await finishAttempt(); } },
+  attempt_foreground: { query: "kind=attempt&purpose=foreground_loss", async run() { await beginWindow(); await awaitNonces(20_000); await step("armForegroundLoss"); await leavePage(); await reviewAfterFault(); await finishAttempt(); } },
   attempt_heartbeat: { query: "kind=attempt&purpose=heartbeat_loss", async run() { await beginWindow(); await awaitNonces(20_000); await step("suppressHeartbeats"); await sleep(FAULT_STOP_MS); await reviewAfterFault(); await finishAttempt(); } },
   soak: { query: "kind=soak", run: runSoak },
   restart: { query: "kind=attempt&purpose=normal&flag=restartQualification", run: runRestart },
