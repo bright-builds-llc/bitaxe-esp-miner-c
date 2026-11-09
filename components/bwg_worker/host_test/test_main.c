@@ -46,5 +46,9 @@ int main(void)
     bwg_tests_preparation_receipt();
     bwg_tests_mining_rules();
     bwg_tests_ctrl_lifecycle();
+    bwg_tests_settings_hmac();
+    bwg_tests_onboarding();
+    bwg_tests_boot_check();
+    bwg_tests_controller_onboarding();
     return bwg_test_summary();
 }

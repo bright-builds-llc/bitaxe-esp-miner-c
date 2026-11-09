@@ -84,6 +84,24 @@ static void manifest_matches_the_gate_and_its_digest(void)
     ASSERT_STREQ(digest, BWG_SERIAL_MANIFEST_SHA256);
 }
 
+static void manifest_digest_is_the_one_the_owners_capabilities_sign(void)
+{
+    // Arrange
+    uint8_t digest[32];
+    size_t written = 0;
+    char hex[65];
+
+    // Act
+    bool decoded = bwg_b64url_decode(BWG_SERIAL_MANIFEST_SHA256, strlen(BWG_SERIAL_MANIFEST_SHA256), digest,
+                                     sizeof(digest), &written);
+    bwg_hex_encode(digest, sizeof(digest), hex);
+
+    // Assert: the 205 and 601 capabilities bind this digest (Gate ADR-0105), so no command may change it.
+    ASSERT_TRUE(decoded);
+    ASSERT_EQ(written, sizeof(digest));
+    ASSERT_MEMEQ(hex, "a43c2c7d61f95fc6", 16);
+}
+
 static void accumulator_reports_overflow_once_and_recovers_after_lf(void)
 {
     // Arrange
@@ -186,6 +204,7 @@ void bwg_tests_frame_stream(void)
     BWG_RUN(encode_matches_the_published_wire_bytes);
     BWG_RUN(encode_refuses_a_non_object_payload_and_small_buffers);
     BWG_RUN(manifest_matches_the_gate_and_its_digest);
+    BWG_RUN(manifest_digest_is_the_one_the_owners_capabilities_sign);
     BWG_RUN(accumulator_reports_overflow_once_and_recovers_after_lf);
     BWG_RUN(accumulator_accepts_a_line_of_exactly_the_limit);
     BWG_RUN(accumulator_reports_allocation_failure_and_discards_the_line);

@@ -132,7 +132,7 @@ This is `bright-builds-llc/bitaxe-esp-miner-c`: upstream's firmware plus the own
   - `components/stratum_v2/sv2_noise.c`, `components/stratum_v2/include/sv2_noise.h`, `components/stratum_v2/test/test_sv2.c`, `components/stratum_v2/test/CMakeLists.txt`: check a certificate's validity window, and let a caller observe a connection and read why it failed, timing a frame from its first byte.
   - `main/tasks/stratum_v2_client.c`: use a V2 lease's pool, refuse work once revoked, and report its frames and timings to the attempt's record.
   - `main/tasks/stratum_task.c`: refuse shares and stay off the pool once revoked, use a V2 lease's protocol, and leave a lease's connection after a failed send.
-  - `main/CMakeLists.txt`: build the Gate's sources and wrap the panic and core-dump seams its fatal path uses.
+  - `main/CMakeLists.txt`: build the Gate's sources, including its onboarding commands and startup check, and wrap the panic and core-dump seams its fatal path uses.
   - `main/tasks/stratum_v1_client.c`: use a lease's pool, and leave the pool once revoked.
   - `main/tasks/power_management_task.c`: start and report the stop, end a lease on a local stop, lost pools or overheat with its reading, tick the crash-loop guard, skip chip commands when a guard-paused boot never initialized it, record a lease's preparation, start the proof variant, and pace local restarts by the restart guard (`main/bwg/bwg_local_guard.c`), powering down after a failed start.
   - `main/http_server/system_api_json.c`, `main/http_server/openapi.yaml`, `main/http_server/axe-os/src/app/services/system.service.ts`, `main/http_server/axe-os/src/app/components/home/home.component.spec.ts`: report `miningActivity`, `pauseReason` and `mineOnBoot`.
@@ -141,11 +141,11 @@ This is `bright-builds-llc/bitaxe-esp-miner-c`: upstream's firmware plus the own
   - `main/tasks/asic_result_task.c`, `components/asic/asic_common.c`: count a lease's nonces and what the ASIC path observed, record a V2 attempt's nonces by job slot, and treat none of them as a block, since the fixture's target is easy.
   - `main/http_server/websocket_api.c`, `main/http_server/websocket.c`, `main/http_server/websocket.h`: time the telemetry loop for the Gate's cadence qualification, and report whether a send succeeded.
   - `main/http_server/http_server.c`: run the telemetry loop on the CPU and priority the Gate's cadence contract names.
-  - `main/main.c`: start the Gate and the crash-loop guard, leave the ASIC off on a boot the guard paused, keep an allocation failure's receipt, and name the board's pins for the panic cutoff.
+  - `main/main.c`: start the Gate and the crash-loop guard, leave the ASIC off on a boot the guard paused, keep an allocation failure's receipt, name the board's pins for the panic cutoff, and replace the unconditional mark-valid with the startup check (`main/bwg/bwg_mark_valid.c`).
   - `partitions.csv`: a coredump partition that takes a whole dump, to the end of flash, matching the Rust image's table.
   - `main/nvs_config.c`, `main/nvs_config.h`: the saved `mineOnBoot` choice the Gate reads, since upstream's pause ends with the boot.
   - `main/power/asic_init.c`: reapply the difficulty after a reset, which is also sent upstream.
-  - `sdkconfig.defaults`: BLE off, the USB port free for the Gate's link, no BBPLL recalibration while it's in use, and core dumps to flash.
+  - `sdkconfig.defaults`: BLE off, the USB port free for the Gate's link, no BBPLL recalibration while it's in use, core dumps to flash, and app rollback on.
   - `test/CMakeLists.txt`: run `bwg_worker` tests.
 
 ### Verification

@@ -13,7 +13,7 @@ Step 5 of `docs/project/c-fork-handoff.md`. Checked 2026-10-30 against upstream 
 | `www` erase failure | Still there: `ESP_ERROR_CHECK` panics during erase | Small pull request, no overlap found |
 | ASIC difficulty after a restart | Still there. A stop resets the chip, but `current_difficulty_power` keeps its old value, so `difficulty_controller_update` sees no change and never writes the mask again. Measured on a 205 at 485 MHz with one pause and resume per image: unmodified `9a687c2` went from 100 nonces in 300 s, lowest difficulty 256, to 28,789 nonces in 286 s, lowest difficulty 1. With the fix it went from 92 nonces in 300 s to 104 in 305 s, lowest difficulty 258.7, and shares kept being accepted | Fix verified and carried on `master`. Branch `fix/asic-difficulty-after-restart` is ready to open as a small pull request. No overlap found in a title and body search |
 | Stalled pool | Still there. A pool that stops reading never breaks the connection, so each share holds the result task for the 5 s send timeout, and nothing reconnects or fails over. Measured on a 601, see below | Deferred by the owner on 2026-11-02, with nothing filed. The fork carries the fix during a lease only. See [the section below](#deferred-stalled-pool-pull-request) |
-| OTA rollback | Changed: `main.c` now calls the mark-valid function, but no rollback setting is on, so no image is ever pending | Open an issue and ask, because field bootloaders may not gain it |
+| OTA rollback | Changed: `main.c` now calls the mark-valid function, but no rollback setting is on, so no image is ever pending | The fork turns rollback on and marks valid only after its own startup check (Ticket 03 of the Gate's C-image milestone). An offer is ready for the owner to open, see [the section below](#offer-mark-valid-after-startup) |
 | Stop order and results | Changed in part: frequency now winds down to 50 MHz first. It still cuts voltage before holding reset and before marking the ASIC uninitialized, and it ignores results | Open an issue and ask, with no evidence of harm yet |
 | Overheat step-down | Mostly gone: #1790 clamps voltage to the regulator's minimum. The literal fallbacks remain, but need settings at or below 100 to apply | No action |
 
@@ -57,3 +57,16 @@ Plan if this is picked up: one public pull request that references issue #1964, 
 ## Security-sensitive topics
 
 Bounds on settings accepted over HTTP, secrets in logs and over BAP, authentication on BLE writes, and Stratum V2 certificate handling and handshake logging were checked privately on this tree. They go through upstream's private reporting flow in `SECURITY.md`, so this public file names topics only.
+
+## Offer: mark valid after startup
+
+Prepared on 2026-11-09 for the owner to open; nothing is filed. Rollback only works on a board whose bootloader was built with it, and an OTA update never rewrites the bootloader. So the offer opens as an issue that asks whether upstream wants rollback in fresh factory images, and links the branch.
+
+**The change:** the local branch `offer/mark-valid-after-startup`, one commit on `upstream/master` at `bcb569f`, not pushed. It sets `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y` and moves the mark-valid call from just after NVS init to just after `start_rest_server`. An image that can't start the API rolls back, and one that resets before that point boots the previous image. It is generic: it waits neither for Wi-Fi, since an update over the setup AP would then always roll back, nor for anything the fork adds. The branch was not built or flashed. The fork's own check, which also waits for the Gate link and reads the settings back, is built and host-tested, but not yet run on a board.
+
+**Draft title:** Confirm an OTA update only once the API is up
+
+**Draft body:**
+
+> `main.c` calls `esp_ota_mark_app_valid_cancel_rollback()` for a pending image, but `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE` is off, so no image is ever pending and a bad OTA image that crashes during startup leaves the board without AxeOS to update it again. This turns rollback on and confirms the image only after the REST server has started, so an image that resets before then, or fails to start the API, boots the previous slot instead. Only boards flashed with a factory image that has the new bootloader gain this, since an OTA update doesn't rewrite the bootloader; on older bootloaders the image is never pending and nothing changes. Would you take this for the factory images, and is "the API is up" the right point to confirm?
+

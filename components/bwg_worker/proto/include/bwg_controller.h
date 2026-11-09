@@ -17,6 +17,7 @@
 #include "bwg_review.h"
 #include "bwg_trust.h"
 #include "bwg_noise_record.h"
+#include "bwg_onboarding.h"
 #include "bwg_v2_record.h"
 
 #define BWG_CONTROLLER_ADMISSION_MAX_AGE_MS 60000u
@@ -187,6 +188,8 @@ typedef struct {
     const bwg_v2_ops_t *maybe_v2;
     /** Optional, and whole when present. Without it the Noise diagnostic commands are refused. */
     const bwg_noise_ops_t *maybe_noise;
+    /** Optional, and whole when present. Without it the onboarding commands are refused. */
+    const bwg_onboarding_ops_t *maybe_onboarding;
 } bwg_controller_ops_t;
 
 /** Replaces the deployment-trust check, for fixtures that carry no real signature. */

@@ -82,6 +82,11 @@ bwg_ctrl_error_t bwg_ctrl_prepare_cadence_arm(bwg_controller_t *controller, cons
                                               bwg_ctrl_outcome_t *outcome);
 bwg_ctrl_error_t bwg_ctrl_prepare_cadence_review(bwg_controller_t *controller, const bwg_ctrl_request_t *request, uint64_t now_ms,
                                                  bwg_ctrl_outcome_t *outcome);
+/** Whether `command` is `onboarding_inspect` or `onboarding_verify`. */
+bool bwg_ctrl_is_onboarding(bwg_str_t command);
+/** Answers an onboarding command. Read-only and open to any session, as `discover` is. */
+bwg_ctrl_error_t bwg_ctrl_prepare_onboarding(bwg_controller_t *controller, const bwg_ctrl_request_t *request,
+                                             bwg_ctrl_outcome_t *outcome);
 bwg_ctrl_error_t bwg_ctrl_prepare_cooling(bwg_controller_t *controller, const bwg_ctrl_request_t *request, uint64_t now_ms,
                                           bwg_ctrl_outcome_t *outcome);
 /** Answers `clock_discontinuity_stimulus`. It arms only once the reply was truly delivered. */

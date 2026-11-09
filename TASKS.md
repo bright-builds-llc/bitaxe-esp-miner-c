@@ -4,10 +4,11 @@ The fork's list of open work, one line per item: its state, what unblocks it, an
 
 ## Waiting on the owner
 
-Nothing at the moment.
+- `task-upstream-mark-valid`: open the mark-valid offer (an issue, linking branch `offer/mark-valid-after-startup`). See "Offer: mark valid after startup" in `docs/project/upstream-candidates.md`.
 
 ## Deferred
 
+- `task-onboarding-bounds-601`: measure Ticket 03's onboarding bounds on the 601: the 120 s startup-check deadline against a real boot's time to the Gate link, a failed check rolling back through the bootloader, and the HMACs over its NVS. Needs the owner present to flash. See turnstile Ticket 03 in `.scratch/c-image-end-to-end-gate/issues/`.
 - `task-upstream-stalled-pool`: the pull request for leaving a stalled pool. See `docs/project/upstream-candidates.md`.
 - `task-upstream-candidates`: the other rows with a next action, including the verified ASIC difficulty fix. See `docs/project/upstream-candidates.md`.
 - `task-bright-builds-update`: once `bright-builds-llc/bright-builds-rules` pull request 14 merges, run `bright-builds-auto-update.yml` once and confirm it passes.

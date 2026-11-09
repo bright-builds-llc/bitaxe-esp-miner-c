@@ -1,4 +1,5 @@
 #include "bwg_noise_gate.h"
+#include "bwg_onboarding_gate.h"
 #include "bwg_v2_gate.h"
 #include "bwg_v2_runtime.h"
 #include "bwg_gate_ops.h"
@@ -540,6 +541,7 @@ void bwg_gate_ops_fill(bwg_controller_ops_t *ops, const bwg_allocator_t *allocat
     };
     bwg_v2_gate_fill_ops(ops, GLOBAL_STATE);
     bwg_noise_gate_fill_ops(ops, GLOBAL_STATE);
+    bwg_onboarding_gate_fill_ops(ops);
 }
 
 static const char *admission_stage(const bwg_revocation_snapshot_t *snapshot)

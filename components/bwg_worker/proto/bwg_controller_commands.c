@@ -363,6 +363,9 @@ static bwg_ctrl_error_t prepare_controller(bwg_controller_t *controller, const b
     if (bwg_str_equals(command, "qualification_cooling")) {
         return bwg_ctrl_prepare_cooling(controller, request, now_ms, outcome);
     }
+    if (bwg_ctrl_is_onboarding(command)) {
+        return bwg_ctrl_prepare_onboarding(controller, request, outcome);
+    }
     if (bwg_ctrl_is_review(command)) {
         return bwg_ctrl_prepare_review(controller, request, now_ms, outcome);
     }

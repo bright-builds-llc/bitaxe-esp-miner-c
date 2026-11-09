@@ -1,5 +1,7 @@
 These fixtures are unmodified copies of files under conformance/ in the Bitcoin Work Gate
-repository (bitaxe-turnstile-system), source commit b7751451cf51c787d7523dbd44076d8e5c3ea882.
+repository (bitaxe-turnstile-system), source commit b7751451cf51c787d7523dbd44076d8e5c3ea882,
+except onboarding/settings-hmac-vectors.json, copied from
+conformance/bwg-bitaxe-onboarding-0.2/ at source commit cfa27126b12e6fb7eb78180da743392e2a105020.
 They are used under the MIT License below.
 
 MIT License

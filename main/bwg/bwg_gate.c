@@ -14,6 +14,7 @@
 #include "bwg_link_report.h"
 #include "bwg_link.h"
 #include "bwg_link_presence.h"
+#include "bwg_mark_valid.h"
 #include "bwg_mining.h"
 #include "bwg_owner_watchdog.h"
 #include "bwg_provision.h"
@@ -539,6 +540,7 @@ static void owner_task(void *arg)
     bwg_evidence_set_identity(elf_hex);
     if (ready && bwg_link_init(&s_link, &s_allocator, &s_shared, &s_link_ops, commit, elf_hex) && create_tasks()) {
         ESP_LOGI(TAG, "Gate link ready");
+        bwg_mark_valid_note_link_ready();
         owner_run();
     }
     ESP_LOGE(TAG, "Gate link failed to start");
@@ -550,6 +552,7 @@ void bwg_gate_start(GlobalState *GLOBAL_STATE)
     bwg_provision_t provision;
     if (!bwg_provision_for_board(GLOBAL_STATE->DEVICE_CONFIG.board_version, &provision)) {
         ESP_LOGI(TAG, "No Gate provisioning for this image and board");
+        bwg_mark_valid_note_no_link();
         return;
     }
     s_global_state = GLOBAL_STATE;

@@ -71,3 +71,8 @@ CONFIG_ESP_COREDUMP_CHECK_BOOT=y
 CONFIG_ESP_COREDUMP_LOGS=n
 # All of the app's ELF digest, so a dump can be matched to its image.
 CONFIG_APP_RETRIEVE_LEN_ELF_SHA=64
+
+# An image written to an OTA slot boots on trial: it marks itself valid only after its startup check
+# (main/bwg/bwg_mark_valid.c), and the bootloader rolls back one that resets before then. Anti-rollback stays
+# off, so the previous slot can always boot again.
+CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
