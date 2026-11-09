@@ -1,6 +1,6 @@
 # Gate integration evidence
 
-Evidence for Bitcoin Work Gate parity with the Rust firmware, recorded 2026-11-01. Every claim below is about this one image on this one board, unless a line says otherwise, and none carries over from a Rust image or an earlier image of this tree. The Gamma 601 has its own section and image, and nothing else here covers it. "The 205 on `f7139ad`" is the latest run on this board, recorded 2026-11-02, and the sections before it are about earlier images.
+Evidence for Bitcoin Work Gate parity with the Rust firmware, recorded 2026-11-01. Every claim below is about this one image on this one board, unless a line says otherwise, and none carries over from a Rust image or an earlier image of this tree. The Gamma 601 has its own section and image, and nothing else here covers it. "The 205 on `f7139ad`" is the latest full run on this board, recorded 2026-11-02, and the sections before it are about earlier images. "The lifecycle rerun on the 205" and "Ticket 07 on the 205" are later, narrower runs on `247d2cd`.
 
 | | |
 |---|---|
@@ -394,7 +394,23 @@ The three behaviours `3aed144` names:
 - **Reboot marker:** after a restart during a lease, the harness's next session read generation 0 and restoration `confirmed` with `reboot`, and the page's `reboot` scenario read the same. The following lease started at generation 1.
 - **Stop retries:** not reached. The board log of every harness lease read `Lease stop finished ok=1`, 11 of 11, and no board log kept from this or any earlier image holds `ok=0` or "Stop did not finish". A failed stop has never happened on hardware here, so the retry states rest on the host tests alone.
 
-Non-claims: one run of each, on the 601 only, and the 205 wasn't run. The campaign windows, V2 and Noise, the pool and V2 faults, the guards, the core dump, `soak` and `cadence` weren't rerun, since they repeat these transitions without adding any. Both images report the same version string, so the flash's own hash check tells them apart, not `version`.
+Non-claims: one run of each, on the 601 only; the 205's rerun is the next section. The campaign windows, V2 and Noise, the pool and V2 faults, the guards, the core dump, `soak` and `cadence` weren't rerun, since they repeat these transitions without adding any. Both images report the same version string, so the flash's own hash check tells them apart, not `version`.
+
+## The lifecycle rerun on the 205
+
+On 2026-11-08, on the 205, the same test-authority image of `247d2cd` (the same `esp-miner.bin` and ELF digests as the 601's) ran the same steps in one sitting, with the Gate at `e86b3db` from a clean clone. The board was matched by base-MAC digest before each ROM write, NVS was kept, the core-dump partition read empty after the flash, and the owner's reference image of `247d2cd` was put back afterwards. The board's LCD had just been reseated. In the boots before, with it loose, the board ran its Gate link but never reached the network; this run doesn't explain that.
+
+| Step | Result |
+|---|---|
+| Harness | The same eleven scenarios completed, each ending at `baseline` with restoration `confirmed`, with the same reasons as the 601: `connectivity_lost` after `heartbeat_timeout` and `unsafe_observation`, `monotonic_reset`, `paused`, `lease_expired`, `reboot`. The replayed Start was `command_rejected`, and a local pause during a lease reported `unsafe_observation`. The `mining` lease ran 312,899 ms with 15 renewals, 10 accepted and 0 rejected. Stops were observed after 19,467 and 31,568 ms |
+| The Gate's eight pages, in Chrome | All eight closed with no first failure and the same device reasons as the 601. Start replies took 11.08 to 11.83 s |
+| `attempt_normal`, `attempt_foreground`, `attempt_heartbeat` | Ordinals 94, 95 and 96 passed the window judge. `normal` 178,296 ms active, 9 renewals, 8 accepted, 0 rejected, 66 nonces. `foreground` ended `link_closed` and `heartbeat` ended `heartbeat_timeout`, both at `fan_paused`. Each window's cooling review was saved with the budget unchanged |
+| `restart` | Stage `complete`, acknowledgement matched, boot ordinal 9 to 10, software reset seen, identity matched, 0 port reopens, 7,142 ms |
+| Fan stop | Duty 0 ended the lease as `zero_fan`, reason `unsafe_observation`, 1,011 ms after the last safe sample. The stop drove the fan to 100%, and settings were restored |
+
+Restoration and the reboot marker read as on the 601: every lease ended in a confirmed restoration with its reason, and after the restart during a lease the next session read generation 0 and `confirmed` with `reboot`. Stop retries weren't reached. Nine harness leases logged `Lease stop finished ok=1`; the `lease_stop` lease's log capture ended 1 s into its stop, before that line, and the `reboot` lease ended in the restart. No log holds `ok=0` or "Stop did not finish".
+
+Non-claims: one run of each. The same steps as the 601 were left out. The board logs come from captured windows, not a continuous log.
 
 ## Ticket 07: the first mainnet Gate on the 601
 
@@ -410,7 +426,19 @@ The Gate's reference page, its services and pinned Hydra ran a complete Gate on 
 
 None of the board's logs around the two minimized runs holds `heartbeat_timeout` or `session_revoked`. With the fork at `f389ee1`, the gate host's `restore_satisfied` and `lease_stop` both passed again on the same image, with stops of 47,266 and 48,267 ms. With `0c775ea`'s acceptance client and a Gate clone at `ddd6364`, `attempt_foreground`, whose fault now dispatches `pagehide`, passed the window judge as ordinal 63, ending with `link_closed` at `fan_paused`.
 
-Non-claims: the 601 only, and the 205 wasn't run. The renewals rest on the Authority's lease sequence, since the board doesn't log them, and the lease running on to the requirement after them. Reuse of a spent pass was tried on hardware only by resending the identical request, with the same DPoP proof; a fresh proof on a spent pass is refused in the Gate's `restart_rejects_consumed_pass_and_converges_new_pass_on_one_redemption` test, not on hardware. A tab frozen by Energy Saver, a discarded tab and a campaign window with the new fault weren't run. The Core version differs from the Gate's pin.
+Non-claims: the 601 only; the 205's run is the next section. The renewals rest on the Authority's lease sequence, since the board doesn't log them, and the lease running on to the requirement after them. Reuse of a spent pass was tried on hardware only by resending the identical request, with the same DPoP proof; a fresh proof on a spent pass is refused in the Gate's `restart_rejects_consumed_pass_and_converges_new_pass_on_one_redemption` test, not on hardware. A tab frozen by Energy Saver, a discarded tab and a campaign window with the new fault weren't run. The Core version differs from the Gate's pin.
+
+## Ticket 07 on the 205
+
+On 2026-11-09 the 205 ran one complete mainnet Gate, minimized, on the owner's reference image of `247d2cd` (the same digests as the 601's above), with the same Hydra, node and Chrome, and the Gate at `e86b3db`, unchanged since the 601's last run. The image went back on in the lifecycle rerun above, after a base-MAC match.
+
+| Run (UTC) | Page | Result |
+|---|---|---|
+| 2026-11-09 04:08 | A default-settings profile, minimized 04:09:14 to 04:12:31 | The Work Requirement was 2^45. The lease started at 04:09:03 and the Authority issued renewals at 04:09:32, 04:09:50, 04:10:11, 04:10:32 and 04:10:51. Verified Progress reached 35,184,908,967,936 of 35,184,372,088,832 at 04:11:00, at about 440 GH/s. The board stopped in 30,080 ms, cooling proven after 13,010 ms, with `restoration_requested` and `Lease stop finished ok=1`. Redemption was accepted at 04:11:30, and Chrome let go of the port within 1 s |
+
+The board's log over the run holds no `heartbeat_timeout` or `session_revoked`.
+
+Non-claims: one run. Reuse of the spent pass wasn't tried on this board. The renewals rest on the Authority's lease sequence, as on the 601. The Core version differs from the Gate's pin.
 
 ## Differences from Rust
 

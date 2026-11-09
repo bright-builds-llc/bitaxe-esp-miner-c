@@ -14,7 +14,6 @@ Nothing at the moment.
 - `task-secured-ble-provisioning`: BLE setup with more security than upstream. BLE stays off in fork builds until this exists. The earlier notes are in the Rust repository's `TASKS.md`.
 - `task-telemetry-descriptive-extensions`: descriptive telemetry names, if still wanted. The earlier notes are in the Rust repository's `TASKS.md`.
 - `task-secp256k1-lowmemory`: save about 1 MB with the `secp256k1` table setting. See `docs/project/c-fork-handoff.md`.
-- `task-lifecycle-board-rerun`: the controller's lease and effect lifecycle is now one state type (`proto/bwg_ctrl_lifecycle.c`). The 601 passed on `247d2cd`, with restoration and the reboot marker unchanged; a stop retry has never happened on hardware, so that path rests on host tests. The 205 is still to run. See "The lifecycle rerun on the 601" in `docs/project/gate-integration-evidence.md`.
 
 ## Unexplained results
 
@@ -24,3 +23,4 @@ Nothing at the moment.
 - `task-second-reconnect`: 2 of the 601's 22 closed-connection runs connected a third time. The one examined followed about 9 s in which the board's whole network path went silent while its USB link carried on, so reconnecting was right. Why the path went silent isn't known. If it happens again, read the board's own log (`/api/system/logs`) soon after. See "The second reconnect" in `docs/project/gate-integration-evidence.md`.
 - `task-power-loss-readings`: in its last reading before a power loss on the 601, the board read 81 °C and 16.2 W, up from 51 °C and 13.5 W a second before, as its input sagged. Whether the readings were real isn't known. See "Faults at the board" in `docs/project/gate-integration-evidence.md`.
 - `task-white-screen-601`: a one-off so far. After a power-on on `1a6b464`, the 601's display stayed solid white while the board otherwise ran normally, and a software restart cleared it. It wasn't power-cycled again, so a cold start is only a suspect. Look again if it comes back.
+- `task-loose-lcd-boot`: with its OLED loose on the shared I2C bus, the 205 ran its Gate link but never reached the network, though upstream falls back to a virtual display when the panel is absent and starts the web server even in degraded mode. Its console wasn't captured. Next: boot with the display unplugged to test the clean case. See "The lifecycle rerun on the 205" in `docs/project/gate-integration-evidence.md`.
