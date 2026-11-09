@@ -26,12 +26,14 @@ new MutationObserver(() => {
   });
 }).observe(document.querySelector("#state"), { childList: true, subtree: true, characterData: true });
 
-document.addEventListener("visibilitychange", () => {
+// Since the Gate's ADR-0110 a session ends when the page is left, not hidden; the fault keeps its wire kind,
+// as the purpose keeps `foreground_loss`. Capture runs before the SDK's own exit listener, so the
+// snapshot still shows the running lease.
+window.addEventListener("pagehide", () => {
   const state = current();
-  if (document.visibilityState !== "hidden" || !state?.running) return;
-  // The real event, snapshotted before the SDK's disconnect callback settles.
-  enqueue(() => post("/fault", { kind: "visibility_hidden", running: true, visibility: "hidden", heartbeatSuppressed: state.heartbeatSuppressed, generation: state.qualification?.generation }));
-});
+  if (!state?.running) return;
+  enqueue(() => post("/fault", { kind: "visibility_hidden", running: true, visibility: document.visibilityState, heartbeatSuppressed: state.heartbeatSuppressed, generation: state.qualification?.generation }));
+}, { capture: true });
 
 window.recoverySupervisor = {
   async flush() {
