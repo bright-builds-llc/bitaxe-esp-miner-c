@@ -440,6 +440,28 @@ The board's log over the run holds no `heartbeat_timeout` or `session_revoked`.
 
 Non-claims: one run. Reuse of the spent pass wasn't tried on this board. The renewals rest on the Authority's lease sequence, as on the 601. The Core version differs from the Gate's pin.
 
+## Ticket 08 on the 205: interruptions through the Gate's page
+
+On 2026-11-09 the 205 ran the turnstile's Ticket 08 interruptions through the Gate's deployed page, on the owner's reference image of `247d2cd`, with the same Hydra, node and default-settings Chrome as Ticket 07. Each case was a new challenge at 2^45. The Gate was at `8844302` for the first sitting, which added the page's own Renew, then at `eb475f9`, the turnstile's fix for Pause, for the Pause and expiry reruns. An agent clicked the page's controls with real mouse input on the owner's authorization. Each row is checked against the Authority's rows, the board's log and its API.
+
+| Case (UTC) | Gate | Result |
+|---|---|---|
+| Completion, minimized, 05:40 | `8844302` | One renewal from the page. Gate Pass issued, then the board stopped in 19,292 ms with `restoration_requested` and `ok=1`. Redeemed, and Chrome let go of the port |
+| Pause 0.3 s after Start, 05:44 | `8844302` | Failed. The page offered Pause before the board's Start finished, and its command failed with `operation_active`. The board stopped with `control_failed` and `ok=1`, but the page went on showing the work running |
+| Pause, then Resume, 05:46 | `8844302` | Failed. The board paused and resumed, but the page sent no renewal after Resume, so the board stopped with `lease_expired` and `ok=1`, and the page showed the work running |
+| Pause and leave it, 06:05 | `8844302` | Failed as the 05:44 case did, since Pause again came before the Start finished |
+| Pause as soon as offered, then Resume, 06:09 | `eb475f9` | The page hid its control until the Start finished, 11.2 s after the click. The Pause stopped the board in 19,230 ms with `restoration_requested` and `ok=1`, and the page showed it paused. After Resume the page renewed twice, the Gate Pass was issued, the board stopped in 19,524 ms with `ok=1`, and the pass was redeemed with the port let go |
+| Pause and leave it, 06:12 | `eb475f9` | The Pause came 0.1 s after the board reported mining. The board stopped in 19,618 ms with `restoration_requested` and `ok=1`, and no renewal followed. The challenge expired 15 min after it was issued with no Gate Pass, and the page showed it expired but kept the port |
+| Cancel during mining, 05:55 | `8844302` | The challenge went to `cancelled` with no Gate Pass. The board stopped in 19,638 ms with `restoration_requested` and `ok=1`. The page kept the port afterwards |
+| Tab closed during mining, 05:56 | `8844302` | The board stopped with `heartbeat_timeout` 2,800 ms after the last heartbeat, in 19,359 ms with `ok=1`, and the port came free. No Gate Pass |
+| USB dropped while powered, 05:57 | `8844302` | The board stopped with `link_closed` 2,510 ms after the last heartbeat, in 19,870 ms with `ok=1`. The page showed the work paused. No Gate Pass |
+| Pool stopped during mining, 05:59 | `8844302` | The Authority stopped the session for the closed upstream about 2 s after the adapter lost the pool. The board stopped with `control_failed` in 19,804 ms with `ok=1`, the page showed the work paused and let go of the port. No Gate Pass. The pool came back, and the reboot case's lease mined through it |
+| Power pulled during mining, 06:04 | `8844302` | The board came back from a power-on reset paused, with `mineOnBoot` 0 and core voltage 0. The Authority's session stopped. No Gate Pass |
+
+No case logged a stale job, since no new tip came while a lease was mining.
+
+Non-claims: one board and one run each. Only the Pause and expiry cases ran on `eb475f9`, so the other cases' page behaviour is that of `8844302`. Withheld, expired-context and cross-possession grants, the other board's context, `helloRecovery.discardedReplies` and an adapter replay weren't tried, and are left for the turnstile's next ticket. A stale job wasn't seen.
+
 ## Differences from Rust
 
 By decision:
