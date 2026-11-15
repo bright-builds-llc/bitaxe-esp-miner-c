@@ -460,7 +460,27 @@ On 2026-11-09 the 205 ran the turnstile's Ticket 08 interruptions through the Ga
 
 No case logged a stale job, since no new tip came while a lease was mining.
 
-Non-claims: one board and one run each. Only the Pause and expiry cases ran on `eb475f9`, so the other cases' page behaviour is that of `8844302`. Withheld, expired-context and cross-possession grants, the other board's context, `helloRecovery.discardedReplies` and an adapter replay weren't tried, and are left for the turnstile's next ticket. A stale job wasn't seen.
+Non-claims: one board and one run each. Only the Pause and expiry cases ran on `eb475f9`, so the other cases' page behaviour is that of `8844302`. Withheld, expired-context and cross-possession grants, the other board's context, `helloRecovery.discardedReplies` and an adapter replay weren't tried, and are left for the turnstile's next ticket; "Ticket 28 on both boards" below has the first three. A stale job wasn't seen.
+
+## Ticket 28 on both boards
+
+On 2026-11-14 the 601 and the 205 ran the turnstile's Ticket 28 through the Gate's deployed page, both on the owner's reference image of `247d2cd`, with nothing flashed. The Gate was at `59981fe` with a clean worktree, and the Work Requirement 2^45. Hydra, the node and its deviation were as in Ticket 07. The browser was a default-settings Google Chrome 157 driven over CDP: the turnstile's `scripts/gate-negatives-harness.ts` intercepted the Authority's grants in it, and the owner picked each port when Chrome asked. Each row is checked against the Authority's rows, both boards' APIs and which device Chrome held (`lsof`).
+
+| Case (UTC) | Board | Result |
+|---|---|---|
+| `helloRecovery`, no lease, 23:21 | 205 | The fork's acceptance supervisor at `51e5af9`, with no signing authority, ran five interrupted status reads, each receipt `interrupted: true`. Each reconnect reused the grant and took about 1.5 s, and each reported `discardedReplies` 1, with 1 to 3 discarded records and 2,537 to 2,997 discarded bytes. An earlier run that went through the chooser, about 4 s per reconnect, reported 0 twice before its third connect failed |
+| Expiry, 23:24 | 205 | Started, first work 41 s later, then Pause. The challenge expired at 23:40:40, and 90 s later the page had closed the port, with no Gate Pass request and no recorder error |
+| `withheld`, 00:01 | 601 | The Start grant was withheld. The Authority ended the challenge `cancelled`, the Cancel was accepted, Verified Progress stayed 0, and no Gate Pass was requested |
+| `expired_context`, 00:02 | 601 | The Start grant was held 65 s, past its context. The challenge ended `cancelled` with Verified Progress 0 and no Gate Pass request |
+| `handed_over`, four tries from 23:58 to 00:39 | both | Not run. The page takes one site-wide Web Lock, `bwg-worker-serial`, with `ifAvailable`, before admission. Tab a held it, so tab b's admission failed whichever board was picked |
+
+The audit searched every Authority request for the eight board values and found none. Only the control-session digest reached the Authority from a board. Both boards ended paused with `mineOnBoot` 0, and the 205's core voltage read 0. The 601's read 19 mV, as it did before the sitting. The three `handed_over` tries made with both boards granted each left tab a's challenge with a lease the board never received, and each ended at expiry as `challenge_expired`, and the launcher recorded lease sequence 15,049. No stale job was logged. The 205 mined for 41 s, and nothing else mined.
+
+**Earlier tries ran on the wrong board.** Until 00:00 the Gate's site held a grant for the 205 only, so the page reused it with no chooser. The first `withheld` timed out while the 205's expiry tab held that port, and the first `expired_context` and a `withheld` rerun passed on the 205. They count as passes on the 205. After the owner granted the 601 on the Gate's site, its rows above ran with Chrome holding the 601's port only.
+
+**The positive count.** It is the first on any firmware. That it appears only on a fast reconnect suggests a reply already written before the interrupt is still in transit when the new session starts, which the firmware's old-epoch drop (`select_control` in `bwg_writer.c`) doesn't reach. That is a guess, and nothing here tests it.
+
+Non-claims: one run each. `handed_over` and a handed-over grant refused on the board weren't seen. The board's "contexts differ" refusal rests on the Gate's `negative-cases.json` and the C host tests. A refused Start on the board isn't directly observed, since the harness records `start_lease` as unobserved. The boards' Device Identity keys weren't among the values searched. The 205's log endpoint ends 30 s into the expiry case's stop, so that stop's `ok=1` isn't captured; the board read paused at 0 V afterwards. The 205's consent screen named the 601, because the page's disclosure lists only the 601. The Core version differs from the Gate's pin.
 
 ## Differences from Rust
 
