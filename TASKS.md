@@ -8,7 +8,6 @@ The fork's list of open work, one line per item: its state, what unblocks it, an
 
 ## Deferred
 
-- `task-onboarding-bounds-601`: measure Ticket 03's onboarding bounds on the 601: the 120 s startup-check deadline against a real boot's time to the Gate link, a failed check rolling back through the bootloader, and the HMACs over its NVS. Needs the owner present to flash. See turnstile Ticket 03 in `.scratch/c-image-end-to-end-gate/issues/`.
 - `task-upstream-stalled-pool`: the pull request for leaving a stalled pool. See `docs/project/upstream-candidates.md`.
 - `task-upstream-candidates`: the other rows with a next action, including the verified ASIC difficulty fix. See `docs/project/upstream-candidates.md`.
 - `task-bright-builds-update`: once `bright-builds-llc/bright-builds-rules` pull request 14 merges, run `bright-builds-auto-update.yml` once and confirm it passes.
@@ -26,3 +25,4 @@ The fork's list of open work, one line per item: its state, what unblocks it, an
 - `task-white-screen-601`: a one-off so far. After a power-on on `1a6b464`, the 601's display stayed solid white while the board otherwise ran normally, and a software restart cleared it. It wasn't power-cycled again, so a cold start is only a suspect. Look again if it comes back.
 - `task-discarded-reply-source`: on the 205, a reconnect about 1.5 s after an interrupted status read reported `helloRecovery.discardedReplies` 1, five times out of five, where reconnects through the chooser, about 4 s, reported 0. A reply in transit across the interrupt is a guess, and nothing has tested it. See "Ticket 28 on both boards" in `docs/project/gate-integration-evidence.md`.
 - `task-loose-lcd-boot`: with its OLED loose on the shared I2C bus, the 205 ran its Gate link but never reached the network, though upstream falls back to a virtual display when the panel is absent and starts the web server even in degraded mode. Its console wasn't captured. Next: boot with the display unplugged to test the clean case. See "The lifecycle rerun on the 205" in `docs/project/gate-integration-evidence.md`.
+- `task-chrome-crash-onboarding`: in Ticket 15's second install attempt on the 601, Chrome 157 stopped with `EXC_BREAKPOINT` on its IO thread, with no script frames, while the onboarding page reconnected to the C image in a loop. The fix removed the loop and no later sitting crashed, so the cause isn't known. If it happens again, keep Chrome's crash report. See "Ticket 15: onboarding on the 601" in `docs/project/gate-integration-evidence.md`.
