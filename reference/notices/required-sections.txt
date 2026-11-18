@@ -1,0 +1,19 @@
+# Sections the image's notices must hold. tools/third_party_notices.py fails without one, so a licence
+# file that moves out of the generator's reach stops the build instead of vanishing from the notices.
+== notice LICENSE ==
+== notice COPYRIGHT.rst ==
+== notice bitaxe-esp-miner.txt ==
+== notice vendored.txt ==
+== component esp_libc ==
+== component freertos ==
+== component lwip ==
+== component mbedtls ==
+== component wpa_supplicant ==
+== component lvgl__lvgl ==
+== component espressif__cjson ==
+== component espressif__libsodium ==
+== component libsecp256k1 ==
+== component yyjson ==
+== npm @angular/core 
+== npm chart.js 
+== npm tailwindcss 

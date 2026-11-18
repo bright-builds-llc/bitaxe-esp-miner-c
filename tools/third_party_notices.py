@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -20,6 +21,11 @@ Origin = Literal["esp-idf", "project", "third-party"]
 LICENCE_PREFIXES = ("license", "licence", "copying", "notice")
 SKIPPED_DIRECTORIES = {"test", "tests", "test_apps", "examples", "docs", "node_modules", ".git"}
 SEARCH_DEPTH = 2
+FONT_SUFFIXES = {".woff", ".woff2", ".ttf", ".otf"}
+HEADER_LINES = 40
+COPYRIGHT_HEADER = re.compile(r"^\s*(?:/\*+|\*|//|#|<!--)?\s*(?:Copyright\b|SPDX-FileCopyrightText|SPDX-License-Identifier)", re.IGNORECASE)
+# lv_font_conv records its source font in an "Opts:" line, and the converted glyphs keep that font's licence.
+CONVERTED_FONT = re.compile(r"^\s*\*?\s*Opts:.*--font\s")
 REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
 NOTICES_DIR = REPOSITORY_ROOT / "reference" / "notices"
 
@@ -58,6 +64,27 @@ def licence_files(directory: Path) -> list[Path]:
     return sorted(found)
 
 
+def unlisted_vendored_files(project: Path, tracked: list[str], vendored_text: str) -> list[str]:
+    """Tracked files that carry a copyright header or are fonts, and that the vendored notices don't name."""
+    unlisted = []
+    for relative in tracked:
+        path = project / relative
+        if path.suffix.lower() in FONT_SUFFIXES:
+            needs_notice = True
+        else:
+            lines = path.read_text(errors="replace").splitlines()[:HEADER_LINES]
+            needs_notice = any(COPYRIGHT_HEADER.match(line) or CONVERTED_FONT.match(line) for line in lines)
+        if needs_notice and relative not in vendored_text:
+            unlisted.append(relative)
+    return unlisted
+
+
+def missing_sections(text: str, required: list[str]) -> list[str]:
+    """Required section headings (or heading prefixes) that no `== ... ==` line of the notices starts with."""
+    headings = [line for line in text.splitlines() if line.startswith("== ")]
+    return [wanted for wanted in required if not any(heading.startswith(wanted) for heading in headings)]
+
+
 def _header(commit: str, source_url: str) -> str:
     return (
         "Third-party notices for the Bitaxe ESP-Miner reference image (Bright Builds fork)\n\n"
@@ -87,9 +114,11 @@ def _npm_section(package: NpmPackage) -> str:
     files = licence_files(package.directory)
     if files:
         return _section(title, files)
-    if package.declared_licence:
-        return f"\n== {title} ==\ndeclared licence: {package.declared_licence}; no licence file in the package\n"
-    raise MissingLicence(f"npm package {package.name} {package.version} has no licence file or declared licence")
+    # A declared licence alone carries no copyright line or licence text, which MIT and the like require.
+    declared = package.declared_licence or "none"
+    raise MissingLicence(
+        f"npm package {package.name} {package.version} has no licence file (declared: {declared})"
+    )
 
 
 def collect_notices(
@@ -148,9 +177,28 @@ def npm_packages_from_web(web_dir: Path, bundled_dev_packages: list[str]) -> lis
     return [_npm_package(directory) for directory in sorted(directories)]
 
 
-def _bundled_dev_packages() -> list[str]:
-    lines = (NOTICES_DIR / "bundled-dev-packages.txt").read_text().splitlines()
-    return [line.strip() for line in lines if line.strip() and not line.startswith("#")]
+def _listed(name: str) -> list[str]:
+    lines = (NOTICES_DIR / name).read_text().splitlines()
+    return [line.rstrip() for line in lines if line.strip() and not line.startswith("#")]
+
+
+def _tracked_files_needing_review(project: Path) -> list[str]:
+    """Tracked files that ship or build into the image, leaving out submodules, tests, docs and licence files."""
+    submodules = subprocess.run(
+        ["git", "config", "-f", ".gitmodules", "--get-regexp", "path"],
+        cwd=project, check=True, capture_output=True, text=True,
+    ).stdout.split()[1::2]
+    tracked = subprocess.run(["git", "ls-files"], cwd=project, check=True, capture_output=True, text=True).stdout.split("\n")
+    skipped_parts = {"host_test", "test", "tests", "test_apps"}
+    return [
+        relative for relative in tracked
+        if relative
+        and not any(relative.startswith(f"{module}/") or relative == module for module in submodules)
+        and not skipped_parts & set(Path(relative).parts)
+        and not relative.startswith("reference/notices/")
+        and not relative.endswith(".md")
+        and not Path(relative).name.lower().startswith(LICENCE_PREFIXES)
+    ]
 
 
 def main(argv: list[str]) -> int:
@@ -161,15 +209,22 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--source-url", required=True)
     arguments = parser.parse_args(argv)
 
-    components, _, idf = components_from_build(arguments.build_dir)
+    components, project, idf = components_from_build(arguments.build_dir)
+    vendored = NOTICES_DIR / "vendored.txt"
+    unlisted = unlisted_vendored_files(project, _tracked_files_needing_review(project), vendored.read_text())
+    if unlisted:
+        raise MissingLicence(f"files with their own copyright or font licence aren't in {vendored.name}: {', '.join(unlisted)}")
     text = collect_notices(
         gpl_licence=REPOSITORY_ROOT / "LICENSE",
         commit=arguments.commit,
         source_url=arguments.source_url,
         components=components,
-        npm_packages=npm_packages_from_web(arguments.web_dir, _bundled_dev_packages()),
-        extra_notices=[idf / "LICENSE", idf / "docs" / "en" / "COPYRIGHT.rst", NOTICES_DIR / "bitaxe-esp-miner.txt"],
+        npm_packages=npm_packages_from_web(arguments.web_dir, _listed("bundled-dev-packages.txt")),
+        extra_notices=[idf / "LICENSE", idf / "docs" / "en" / "COPYRIGHT.rst", NOTICES_DIR / "bitaxe-esp-miner.txt", vendored],
     )
+    missing = missing_sections(text, _listed("required-sections.txt"))
+    if missing:
+        raise MissingLicence(f"the notices lack required sections: {', '.join(missing)}")
     arguments.output.write_text(text)
     return 0
 

@@ -13,6 +13,8 @@ from third_party_notices import (  # noqa: E402
     NpmPackage,
     collect_notices,
     licence_files,
+    missing_sections,
+    unlisted_vendored_files,
 )
 
 
@@ -97,25 +99,13 @@ class ComponentTests(NoticesTestCase):
 
 
 class NpmTests(NoticesTestCase):
-    def test_npm_package_without_file_shows_declared_licence(self) -> None:
+    def test_rejects_npm_package_without_licence_file(self) -> None:
         # Arrange
         (self.root / "node_modules/zone.js").mkdir(parents=True)
         package = NpmPackage("zone.js", "0.15.0", self.root / "node_modules/zone.js", "MIT")
 
-        # Act
-        text = self.notices(npm_packages=[package])
-
-        # Assert
-        section = text.split("== npm zone.js 0.15.0 ==")[1]
-        self.assertIn("declared licence: MIT; no licence file in the package", section)
-
-    def test_rejects_npm_package_without_any_licence(self) -> None:
-        # Arrange
-        (self.root / "node_modules/bare").mkdir(parents=True)
-        package = NpmPackage("bare", "1.0.0", self.root / "node_modules/bare", None)
-
         # Act / Assert
-        with self.assertRaisesRegex(MissingLicence, "bare"):
+        with self.assertRaisesRegex(MissingLicence, "zone.js"):
             self.notices(npm_packages=[package])
 
 
@@ -141,6 +131,72 @@ class LicenceSearchTests(NoticesTestCase):
 
         # Assert
         self.assertEqual(found, [self.root / "component/a/b/COPYING"])
+
+
+class VendoredTests(NoticesTestCase):
+    def test_rejects_unlisted_file_with_copyright_header(self) -> None:
+        # Arrange
+        self.write("components/stratum/base58.c", "/*\n * Copyright 2012-2014 Luke Dashjr\n */\nint x;\n")
+
+        # Act
+        unlisted = unlisted_vendored_files(self.root, ["components/stratum/base58.c"], "")
+
+        # Assert
+        self.assertEqual(unlisted, ["components/stratum/base58.c"])
+
+    def test_accepts_file_named_in_vendored_notices(self) -> None:
+        # Arrange
+        self.write("components/stratum/base58.c", "/* Copyright 2012-2014 Luke Dashjr */\n")
+        vendored = "Files: components/stratum/base58.c\n"
+
+        # Act
+        unlisted = unlisted_vendored_files(self.root, ["components/stratum/base58.c"], vendored)
+
+        # Assert
+        self.assertEqual(unlisted, [])
+
+    def test_rejects_unlisted_font(self) -> None:
+        # Arrange
+        (self.root / "assets").mkdir()
+        (self.root / "assets/Face.woff2").write_bytes(b"wOF2")
+
+        # Act
+        unlisted = unlisted_vendored_files(self.root, ["assets/Face.woff2"], "")
+
+        # Assert
+        self.assertEqual(unlisted, ["assets/Face.woff2"])
+
+    def test_rejects_unlisted_converted_font(self) -> None:
+        # Arrange
+        self.write("main/images/fonts/ui_font_Face40.c", "/*\n * Size: 40 px\n * Opts: --bpp 1 --size 40 --font Face.ttf --format lvgl\n */\n")
+
+        # Act
+        unlisted = unlisted_vendored_files(self.root, ["main/images/fonts/ui_font_Face40.c"], "")
+
+        # Assert
+        self.assertEqual(unlisted, ["main/images/fonts/ui_font_Face40.c"])
+
+    def test_ignores_copyright_in_running_text(self) -> None:
+        # Arrange
+        self.write("tools/example.py", 'TEXT = "Copyright (c) 2001 Someone"\n')
+
+        # Act
+        unlisted = unlisted_vendored_files(self.root, ["tools/example.py"], "")
+
+        # Assert
+        self.assertEqual(unlisted, [])
+
+
+class RequiredSectionTests(NoticesTestCase):
+    def test_missing_sections_names_absent_ones(self) -> None:
+        # Arrange
+        text = "\n== component lwip ==\nlicence\n== npm tailwindcss 4.3.2 ==\nlicence\n"
+
+        # Act
+        missing = missing_sections(text, ["== component lwip ==", "== npm tailwindcss ", "== component mbedtls =="])
+
+        # Assert
+        self.assertEqual(missing, ["== component mbedtls =="])
 
 
 if __name__ == "__main__":
