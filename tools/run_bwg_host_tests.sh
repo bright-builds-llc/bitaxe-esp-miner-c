@@ -8,6 +8,9 @@ yyjson_dir="$repo_root/components/yyjson/yyjson/src"
 fixture_dir="$worker_dir/host_test/fixtures"
 log_dir="$repo_root/build/bwg_host_tests"
 
+# The reference image's notices generator is plain Python; its tests run first.
+python3 -m unittest discover -s "$repo_root/tools" -p 'test_third_party_notices.py'
+
 read -r -a sodium_cflags <<<"$(pkg-config --cflags libsodium)"
 read -r -a sodium_libs <<<"$(pkg-config --libs libsodium)"
 

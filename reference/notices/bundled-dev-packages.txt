@@ -1,0 +1,3 @@
+# npm devDependencies whose code still ships in the built web UI, so their notices go with the image.
+# tailwindcss: its generated CSS carries Tailwind's own base styles.
+tailwindcss
