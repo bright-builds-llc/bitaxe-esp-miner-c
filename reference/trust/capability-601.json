@@ -1,0 +1,42 @@
+{
+  "protocolVersion": "bwg-worker-controller/0.4",
+  "board": {
+    "model": "bitaxe-gamma",
+    "revision": "601",
+    "usbTransport": "web_serial"
+  },
+  "firmware": {
+    "name": "bright-builds-reference-firmware",
+    "version": "0.1.0"
+  },
+  "compatibility": {
+    "referenceFirmware": true,
+    "workLease": "supported",
+    "miningBaselineRestoration": "supported",
+    "settingsPreservation": "compatible"
+  },
+  "transportProfile": "bwg-worker-serial/0.2",
+  "attestation": {
+    "claims": {
+      "profile": "bwg-reference-firmware-capability/0.2",
+      "protocolVersion": "bwg-worker-controller/0.4",
+      "board": {
+        "model": "bitaxe-gamma",
+        "revision": "601"
+      },
+      "firmware": {
+        "name": "bright-builds-reference-firmware",
+        "version": "0.1.0"
+      },
+      "compatibility": {
+        "referenceFirmware": true,
+        "workLease": "supported",
+        "miningBaselineRestoration": "supported",
+        "settingsPreservation": "compatible"
+      },
+      "transportProfile": "bwg-worker-serial/0.2",
+      "serialManifestSha256": "pDwsfWH5X8bHMTqyB0SgAxTKA0_KpzBqdSLxMpKVNhU"
+    },
+    "compactJws": "eyJhbGciOiJFZDI1NTE5Iiwia2lkIjoiZGV2LXVwZGF0ZS1Ed2FRWUxTdnVXcWFoOG9ZIiwidHlwIjoiYndnLXdvcmtlci1jYXBhYmlsaXR5K2p3cyJ9.eyJib2FyZCI6eyJtb2RlbCI6ImJpdGF4ZS1nYW1tYSIsInJldmlzaW9uIjoiNjAxIn0sImNvbXBhdGliaWxpdHkiOnsibWluaW5nQmFzZWxpbmVSZXN0b3JhdGlvbiI6InN1cHBvcnRlZCIsInJlZmVyZW5jZUZpcm13YXJlIjp0cnVlLCJzZXR0aW5nc1ByZXNlcnZhdGlvbiI6ImNvbXBhdGlibGUiLCJ3b3JrTGVhc2UiOiJzdXBwb3J0ZWQifSwiZmlybXdhcmUiOnsibmFtZSI6ImJyaWdodC1idWlsZHMtcmVmZXJlbmNlLWZpcm13YXJlIiwidmVyc2lvbiI6IjAuMS4wIn0sInByb2ZpbGUiOiJid2ctcmVmZXJlbmNlLWZpcm13YXJlLWNhcGFiaWxpdHkvMC4yIiwicHJvdG9jb2xWZXJzaW9uIjoiYndnLXdvcmtlci1jb250cm9sbGVyLzAuNCIsInNlcmlhbE1hbmlmZXN0U2hhMjU2IjoicER3c2ZXSDVYOGJITVRxeUIwU2dBeFRLQTBfS3B6QnFkU0x4TXBLVk5oVSIsInRyYW5zcG9ydFByb2ZpbGUiOiJid2ctd29ya2VyLXNlcmlhbC8wLjIifQ.y_qOkCazWE3BRDTVslt3s9VlT2i8y_clY5_2jGPdgNlYWiyi_TsW0znsrNqiukMxm9t89vyJ_59SfJBKuXi1CA"
+  }
+}

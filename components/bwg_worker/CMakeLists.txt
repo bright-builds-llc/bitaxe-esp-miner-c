@@ -9,9 +9,9 @@ if(CONFIG_BWG_REVOCATION_PROOF)
     list(APPEND srcs "bwg_revocation_proof.c")
 endif()
 
-# A Gate build names a private directory holding the deployment trust and signed capabilities. Without
-# one the image takes no part in the Gate. Such an image holds no secret, but its trust is deployment
-# specific, so keep it with the owner's other images.
+# A Gate build names a directory holding the deployment trust and signed capabilities. Without one the
+# image takes no part in the Gate. The reference build (tools/build_reference_image.sh) names the public
+# copies in reference/trust; a test or private build may name another.
 set(embed "")
 set(trust_dir "$ENV{BWG_TRUST_DIR}")
 if(trust_dir)

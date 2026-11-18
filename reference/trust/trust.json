@@ -1,0 +1,62 @@
+{
+  "profile": "bwg-worker-deployment-trust/0.2",
+  "updateAuthority": {
+    "issuer": "development-update-authority",
+    "audience": "bwg-reference-firmware-capability/0.2",
+    "role": "update_authority",
+    "keys": [
+      {
+        "kid": "dev-update-PY57O77eAUFmYzGW",
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "HghJY9E29bVf9lOfpbmAcBZyRnrbg7aFC-p7mdPsbhA",
+        "alg": "Ed25519",
+        "use": "sig",
+        "key_ops": [
+          "verify"
+        ]
+      },
+      {
+        "kid": "dev-update-DwaQYLSvuWqah8oY",
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "xf8DO6ofYrezCboUdY03qe5Wq0zgFp3_k5kjW8ht96o",
+        "alg": "Ed25519",
+        "use": "sig",
+        "key_ops": [
+          "verify"
+        ]
+      }
+    ]
+  },
+  "workLeaseAuthority": {
+    "profile": "bwg-worker-deployment-trust/0.2",
+    "issuer": "development-worker-lease-authority",
+    "audience": "bwg-worker-controller/0.4",
+    "role": "work_lease_authority",
+    "keys": [
+      {
+        "kid": "dev-lease-BtqZlfzZctrmykUz",
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "Td5-D4bmzx-ZTuzeV2Azk33VjvTmvhP1ENpm5Hh3zNQ",
+        "alg": "Ed25519",
+        "use": "sig",
+        "key_ops": [
+          "verify"
+        ]
+      },
+      {
+        "kid": "dev-lease-source-bound-v1",
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "JOGbtAPbsrRAYBYdHvTdsxwBVZCvxAKxjsNWgi0FQt4",
+        "alg": "Ed25519",
+        "use": "sig",
+        "key_ops": [
+          "verify"
+        ]
+      }
+    ]
+  }
+}
