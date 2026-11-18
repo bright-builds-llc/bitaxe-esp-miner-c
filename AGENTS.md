@@ -132,7 +132,8 @@ This is `bright-builds-llc/bitaxe-esp-miner-c`: upstream's firmware plus the own
   - `components/stratum_v2/sv2_noise.c`, `components/stratum_v2/include/sv2_noise.h`, `components/stratum_v2/test/test_sv2.c`, `components/stratum_v2/test/CMakeLists.txt`: check a certificate's validity window, and let a caller observe a connection and read why it failed, timing a frame from its first byte.
   - `main/tasks/stratum_v2_client.c`: use a V2 lease's pool, refuse work once revoked, and report its frames and timings to the attempt's record.
   - `main/tasks/stratum_task.c`: refuse shares and stay off the pool once revoked, use a V2 lease's protocol, and leave a lease's connection after a failed send.
-  - `main/CMakeLists.txt`: build the Gate's sources, including its onboarding commands and startup check, and wrap the panic and core-dump seams its fatal path uses.
+  - `main/CMakeLists.txt`: build the Gate's sources, including its onboarding commands and startup check, wrap the panic and core-dump seams its fatal path uses, and install the web UI's dependencies from its lockfile with `npm ci`.
+  - `main/http_server/axe-os/package-lock.json`: synced with `package.json`, so `npm ci` installs exactly it.
   - `main/tasks/stratum_v1_client.c`: use a lease's pool, and leave the pool once revoked.
   - `main/tasks/power_management_task.c`: start and report the stop, end a lease on a local stop, lost pools or overheat with its reading, tick the crash-loop guard, skip chip commands when a guard-paused boot never initialized it, record a lease's preparation, start the proof variant, and pace local restarts by the restart guard (`main/bwg/bwg_local_guard.c`), powering down after a failed start.
   - `main/http_server/system_api_json.c`, `main/http_server/openapi.yaml`, `main/http_server/axe-os/src/app/services/system.service.ts`, `main/http_server/axe-os/src/app/components/home/home.component.spec.ts`: report `miningActivity`, `pauseReason` and `mineOnBoot`.

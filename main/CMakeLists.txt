@@ -180,7 +180,7 @@ else()
 
     add_custom_command(
         OUTPUT ${OPENAPI_STAMP}
-        COMMAND ${NPM_EXECUTABLE} i
+        COMMAND ${NPM_EXECUTABLE} ci
         COMMAND ${NPM_EXECUTABLE} run generate:api
         COMMAND ${CMAKE_COMMAND} -E touch ${OPENAPI_STAMP}
         WORKING_DIRECTORY ${WEB_SRC_DIR}
@@ -213,7 +213,7 @@ else()
     # Custom command that only runs when source files change
     add_custom_command(
         OUTPUT ${WEB_UI_STAMP} ${WEB_UI_OUTPUT}
-        COMMAND ${NPM_EXECUTABLE} i
+        COMMAND ${NPM_EXECUTABLE} ci
         COMMAND ${NPM_EXECUTABLE} run build:no-api-gen
         COMMAND ${CMAKE_COMMAND} -E touch ${WEB_UI_STAMP}
         WORKING_DIRECTORY ${WEB_SRC_DIR}
