@@ -9,6 +9,7 @@ The fork's list of open work, one line per item: its state, what unblocks it, an
 ## Deferred
 
 - `task-reference-source-release`: when a reference image first goes to anyone but the owner, build it with `tools/build_reference_image.sh` from a pushed commit, tag the commit, and publish its `SOURCE.txt`, `dependencies.lock` and `THIRD_PARTY_NOTICES.txt` beside the image. See `reference/README.md`.
+- `task-upstream-font-licences`: Nippo and Angel Wish, inherited from upstream, may not be redistributable; accepted as a known risk on 2026-11-20. Revisit by replacing them (ideally upstream), asking the rights holders, or taking advice. See "Inherited fonts" in `reference/README.md`.
 - `task-upstream-stalled-pool`: the pull request for leaving a stalled pool. See `docs/project/upstream-candidates.md`.
 - `task-upstream-candidates`: the other rows with a next action, including the verified ASIC difficulty fix. See `docs/project/upstream-candidates.md`.
 - `task-bright-builds-update`: once `bright-builds-llc/bright-builds-rules` pull request 14 merges, run `bright-builds-auto-update.yml` once and confirm it passes.

@@ -116,6 +116,7 @@ This is `bright-builds-llc/bitaxe-esp-miner-c`: upstream's firmware plus the own
 - **Core dumps (2026-11-03):** keep them in on-device flash, although a dump's task stacks may hold pool credentials.
 - **Start readiness (2026-11-03):** a Start reports running only after first work, up to 25 s, where Rust reports it once a pool authorizes.
 - **Reference firmware (2026-11-03):** a reference image embeds the owner's public trust and signed capabilities. Only the owner signs, and agents never use the owner's private keys.
+- **Upstream fonts (2026-11-20):** ship Nippo (the web UI) and Angel Wish (the display's logo) as upstream does, as a known risk, although their terms may not allow redistribution. Revisit with `task-upstream-font-licences`; see `reference/README.md`.
 
 ### Sync Policy
 - Put extensions in new components, such as `components/bwg_worker`, with narrow hooks in upstream files.
