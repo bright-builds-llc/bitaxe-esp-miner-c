@@ -59,13 +59,13 @@ void bwg_local_guard_tick(GlobalState *GLOBAL_STATE, bool asic_stopped)
         ESP_LOGI(TAG, "Operator resumed, starting over");
         bwg_restart_guard_resume(&s_guard);
         // The stratum task can't clear these itself while the pause keeps it off the pool.
-        system->pools_unavailable = false;
-        stratum_request_reconnect();
+        stratum_notify_pool_selection_changed(GLOBAL_STATE);
     }
     s_was_paused = paused;
 
     const bool running = !asic_stopped && authority_is_local();
-    const bool hashing = system->work_received > 0 && GLOBAL_STATE->ASIC_initalized;
+    const PoolSession *session = POOL_get_active_session(GLOBAL_STATE);
+    const bool hashing = session != NULL && session->work_received > 0 && GLOBAL_STATE->ASIC_initalized;
     bwg_restart_guard_observe(&s_guard, running, hashing, system->pools_unavailable && wifi_is_connected(), now);
     publish(GLOBAL_STATE, now);
 }

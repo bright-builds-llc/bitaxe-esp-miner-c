@@ -9,10 +9,10 @@
 #include "thermal.h"
 #include "power.h"
 #include "asic.h"
+#include "asic_common.h"
 #include "utils.h"
 #include "asic_init.h"
 #include "asic_reset.h"
-#include "difficulty_controller.h"
 #include "driver/uart.h"
 #include "bwg_boot_guard.h"
 #include "bwg_local_guard.h"
@@ -76,6 +76,8 @@ static uint8_t mining_start(GlobalState * GLOBAL_STATE)
 {
     ESP_LOGI(TAG, "Starting mining");
 
+    POWER_MANAGEMENT_init_frequency(GLOBAL_STATE);
+
     // Restore voltage from NVS
     uint16_t voltage = nvs_config_get_u16(NVS_CONFIG_ASIC_VOLTAGE);
     bwg_preparation_started(BWG_PREP_STEP_CORE_VOLTAGE);
@@ -100,7 +102,6 @@ static uint8_t mining_start(GlobalState * GLOBAL_STATE)
     }
     bwg_preparation_completed(BWG_PREP_STEP_VOLTAGE_SETTLE);
 
-    POWER_MANAGEMENT_init_frequency(GLOBAL_STATE);
     bwg_preparation_started(BWG_PREP_STEP_ASIC_INIT);
     uint8_t chip_count = asic_initialize(GLOBAL_STATE, ASIC_INIT_RECOVERY, 0);
     if (chip_count > 0) {
@@ -126,6 +127,20 @@ static uint8_t mining_start(GlobalState * GLOBAL_STATE)
 static float expected_hashrate(GlobalState * GLOBAL_STATE)
 {
     return GLOBAL_STATE->POWER_MANAGEMENT_MODULE.frequency_value * GLOBAL_STATE->DEVICE_CONFIG.family.asic.small_core_count * GLOBAL_STATE->DEVICE_CONFIG.family.asic_count / 1000.0;
+}
+
+float POWER_MANAGEMENT_get_nominal_hashrate(const GlobalState * GLOBAL_STATE)
+{
+    if (GLOBAL_STATE->POWER_MANAGEMENT_MODULE.expected_hashrate > 0.0f) {
+        return GLOBAL_STATE->POWER_MANAGEMENT_MODULE.expected_hashrate;
+    }
+
+    float freq = nvs_config_get_float(NVS_CONFIG_ASIC_FREQUENCY);
+    if (freq <= 0.0f) {
+        freq = (float)GLOBAL_STATE->DEVICE_CONFIG.family.asic.default_frequency_mhz;
+    }
+
+    return (freq * (float)GLOBAL_STATE->DEVICE_CONFIG.family.asic.small_core_count * (float)GLOBAL_STATE->DEVICE_CONFIG.family.asic_count) / 1000.0f;
 }
 
 void POWER_MANAGEMENT_init_frequency(GlobalState * GLOBAL_STATE)
@@ -302,7 +317,7 @@ void POWER_MANAGEMENT_task(void * pvParameters)
 
             if (bwg_revocation_stop_wanted()) {
                 // Revoked while cooling: the ASIC is already down, so it stays down, and off the pool.
-                stratum_request_reconnect();
+                stratum_abort_connection();
                 nvs_config_set_bool(NVS_CONFIG_OVERHEAT_MODE, false);
                 is_paused = true;
                 continue;
@@ -338,7 +353,8 @@ void POWER_MANAGEMENT_task(void * pvParameters)
 
             ASIC_set_frequency(GLOBAL_STATE);
             ASIC_set_nonce_space(GLOBAL_STATE);
-            difficulty_controller_update(GLOBAL_STATE);
+            uint8_t difficulty_power = calculate_effective_asic_difficulty(power_management->expected_hashrate);
+            ASIC_set_difficulty(GLOBAL_STATE, difficulty_power);
             
             last_asic_frequency = asic_frequency;
         }

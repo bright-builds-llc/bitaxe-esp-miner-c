@@ -120,7 +120,7 @@ void bwg_stop_ordered(GlobalState *GLOBAL_STATE)
     }
     // After the power and the fan, because a stalled send can hold the mutex this takes. Before the
     // cooling proof, which has no upper limit, because a stopped device has no business on a pool.
-    stratum_request_reconnect();
+    stratum_abort_connection();
 
     enter(BWG_STOP_STAGE_COOLING_PROOF);
     prove_cooling(GLOBAL_STATE);

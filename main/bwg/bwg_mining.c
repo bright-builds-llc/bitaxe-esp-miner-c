@@ -18,6 +18,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "nvs_config.h"
+#include "pool.h"
 #include "sodium.h"
 #include "stratum_task.h"
 #include "sv2_protocol.h"
@@ -133,11 +134,17 @@ static bool device_may_start(GlobalState *GLOBAL_STATE)
 }
 
 // Pool failures belong to the pools that had them. A lease or a return to local mining starts over,
-// and the stratum task can't clear them itself while authority keeps it off the pool.
+// and the stratum task can't clear them itself while authority keeps it off the pool. This also
+// starts every pool's session over and wakes the primary task from its retry wait.
 static void forget_pool_failures(GlobalState *GLOBAL_STATE)
 {
-    GLOBAL_STATE->SYSTEM_MODULE.pools_unavailable = false;
-    stratum_request_reconnect();
+    stratum_notify_pool_selection_changed(GLOBAL_STATE);
+}
+
+// A lease runs on the primary task, since fallback is off while one is active.
+static const PoolSession *lease_session(const GlobalState *GLOBAL_STATE)
+{
+    return &GLOBAL_STATE->SYSTEM_MODULE.pool_sessions[GLOBAL_STATE->SYSTEM_MODULE.primary_pool_index];
 }
 
 void bwg_mining_init(GlobalState *GLOBAL_STATE)
@@ -167,9 +174,7 @@ bool bwg_mining_start(const bwg_lease_pool_t *pool, uint32_t duration_ms, uint32
 
     SystemModule *system = &GLOBAL_STATE->SYSTEM_MODULE;
     system->is_using_fallback = false;
-    system->work_received = 0;
     forget_pool_failures(GLOBAL_STATE);
-    SYSTEM_reset_pool_session(GLOBAL_STATE);
     atomic_store(&s_lease_accepted, 0);
     atomic_store(&s_lease_rejected, 0);
     s_session_accepted = 0;
@@ -195,7 +200,7 @@ bool bwg_mining_start(const bwg_lease_pool_t *pool, uint32_t duration_ms, uint32
             return false;
         }
         // The Gate reads the board's safety from the reply on, and the power task resumes sampling only after init.
-        if (GLOBAL_STATE->ASIC_initalized && system->work_received > 0 && now_ms() - atomic_load(&s_latest_sample_ms) <= BWG_SAMPLE_FRESH_MS) {
+        if (GLOBAL_STATE->ASIC_initalized && lease_session(GLOBAL_STATE)->work_received > 0 && now_ms() - atomic_load(&s_latest_sample_ms) <= BWG_SAMPLE_FRESH_MS) {
             ESP_LOGI(TAG, "Lease active");
             bwg_preparation_completed(BWG_PREP_STEP_READY);
             return true;
@@ -204,7 +209,7 @@ bool bwg_mining_start(const bwg_lease_pool_t *pool, uint32_t duration_ms, uint32
         vTaskDelay(pdMS_TO_TICKS(WAIT_POLL_MS));
     }
     ESP_LOGW(TAG, "Lease did not reach work within %d ms: chip ready %d, work received %d, sample age %llu ms", START_WAIT_MS,
-             GLOBAL_STATE->ASIC_initalized ? 1 : 0, system->work_received > 0 ? 1 : 0,
+             GLOBAL_STATE->ASIC_initalized ? 1 : 0, lease_session(GLOBAL_STATE)->work_received > 0 ? 1 : 0,
              (unsigned long long)(now_ms() - atomic_load(&s_latest_sample_ms)));
     bwg_preparation_failed(BWG_PREP_STEP_READY, BWG_PREP_FAILURE_REPLY_TIMEOUT);
     return false;
@@ -345,8 +350,9 @@ static void add_session_growth(_Atomic uint32_t *total, uint32_t *seen, uint32_t
 
 void bwg_mining_latch_shares(const GlobalState *GLOBAL_STATE)
 {
-    add_session_growth(&s_lease_accepted, &s_session_accepted, (uint32_t)GLOBAL_STATE->SYSTEM_MODULE.shares_accepted);
-    add_session_growth(&s_lease_rejected, &s_session_rejected, (uint32_t)GLOBAL_STATE->SYSTEM_MODULE.shares_rejected);
+    const PoolSession *session = lease_session(GLOBAL_STATE);
+    add_session_growth(&s_lease_accepted, &s_session_accepted, (uint32_t)session->shares_accepted);
+    add_session_growth(&s_lease_rejected, &s_session_rejected, (uint32_t)session->shares_rejected);
 }
 
 void bwg_mining_lease_shares(uint32_t *accepted, uint32_t *rejected)
