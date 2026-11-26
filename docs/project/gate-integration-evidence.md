@@ -519,6 +519,28 @@ Non-claims:
 - **The board's clock is its uptime.** The relay times can't be placed against the board's lease start or stop, only against the Gate's own logs. That the 2 jobs the board refused were the last 2 relayed is likely, but not shown.
 - **One board, one journey, one image.** The harness records `start_lease` as unobserved, so the lease rests on the board's log.
 
+## Ticket 34: a spent Gate Pass
+
+On 2026-11-26, from 03:39 to 03:42 UTC, the 601 ran one mining journey on the turnstile's Ticket 34 through the Gate's deployed page, on the owner's reference image of `247d2cd`, with nothing flashed. The Gate was at `b8025c9` with a clean worktree, and the Work Requirement 2^45. Hydra, the node (Bitcoin Core 31.1, the Gate's pin) and the browser (Google Chrome 158, a fresh default-settings profile, driven by `scripts/gate-negatives-harness.ts` with `--cases journey`) were as in Ticket 33. The owner picked the 601 when Chrome asked.
+
+After the page's own redemption, the harness retried the spent pass as its claimant could, from that page and with its Claimant key. It looked the pass up again from the Authority with a fresh Issuance Proof, then redeemed it again with a fresh DPoP proof. Both were signed inside the page by the page's own transport code.
+
+| Check | Result |
+|---|---|
+| The journey | The consent named "Bitaxe Gamma 601" alone, estimating 29.3 s. Every grant passed, and a Renew grant was searched. Verified Progress reached 35,184,908,967,936 of 35,184,372,088,832, and the Authority went `satisfied` then `pass_issued` at 03:40:26. The page's redemption was answered 200. The board logged `Lease active`, began its stop 19.1 s later, and logged `Lease stop finished ok=1` after 32,013 ms of cooling. The session stopped as `challenge_satisfied` |
+| The refresh | The second lookup returned the identical pass, not a new or extended one |
+| The reuse | The retry was answered 401 `invalid_redemption`. The Relying Service logged `Protected Action succeeded` once, at 03:41:14.25, and `Redemption request rejected error=Gate Pass was already consumed` once, 0.17 s later. That was 48 s into the pass's two-minute life, so the refusal was for the spend, not for expiry |
+| Job admission | As in Ticket 33: 4 jobs relayed and 4 admitted, with none failed or unadmitted |
+
+The audit searched every Authority request, and every Start and Renew grant, for the eight board values and the tab's Device Identity fingerprint, and found no violation. The board ended paused with `mineOnBoot` 0 and its core voltage at 19 mV. No stale job was logged. The launcher exited 0, its cleanup turned the Tailscale serve off and removed the Gate container, and it recorded lease sequence 18,067.
+
+Non-claims:
+- **The retry is the claimant's own**, from the same page with the same key. A pass taken to another device is stopped by its key binding, shown by the Gate's Rust test `copied_gate_pass_rejects_wrong_claimant_key`, not this run.
+- **The retry came before expiry.** A retry after expiry would be refused for expiry, shown by `redemption_rejects_expired_gate_pass`.
+- **Execution after a Relying Service restart** stays the Gate's Rust test, `restart_rejects_consumed_pass_and_converges_new_pass_on_one_redemption`.
+- **The Redemption Record is seen through the service's log**, one `redemption_id` succeeding once, not by reading its tables.
+- **One board, one journey, one image.** The lease rests on the board's log, as in Ticket 33.
+
 ## Ticket 15: onboarding on the 601
 
 On 2026-11-15 the turnstile's onboarding sitting page installed and rolled back the owner's signed C packages on the Gamma 601 over Web Serial and the ESP32-S3 ROM, apart from any Gate. The page ran the production `bitaxeUsbOnboardingAction` in Google Chrome 157, from a profile that held the 601's serial grant. An agent drove it over CDP, and the owner chose Keep or Roll back for each install. Every ROM session was admitted only after the browser read the 601's base MAC and matched the owner's registry digest. Before every esptool write, and every restore from the pre-install backup, esptool made the same check. Each run's state, device step times and outcomes, and the turnstile's Ticket 15 record are checked against an HTTP poll of the board's version. The packages were signed by the owner's Update Authority key, the one in the image's trust, and admitted against the owner's public trust before use. Both report 0.1.0:
