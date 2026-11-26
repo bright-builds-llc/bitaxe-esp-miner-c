@@ -413,8 +413,9 @@ and a factory install from this repository.
   - Done by adopting upstream, per the review document: `esp-idf-6-upgrade`, `parity-stratum-tls`,
     `upstream-v2154-api-and-stratum`, `upstream-v2154-pool-model`, `upstream-v2154-network`.
   - Moot or staying here: the rest.
-- **Open finding:** the `secp256k1` table setting above, tracked in this repository's current
-  `TASKS.md` as `task-secp256k1-lowmemory`.
+- **Closed finding:** the `secp256k1` table setting above was the Rust image's cost only. The C
+  image builds upstream's `components/libsecp256k1` with `ECMULT_WINDOW_SIZE=4` and
+  `ECMULT_GEN_PREC_BITS=2`, and its ELF holds about 23 KB of tables (checked 2026-11-26).
 - **Rebuilding this state** (network needed for ESP-IDF unless `.embuild` exists):
 
   ```bash
