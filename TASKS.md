@@ -4,6 +4,7 @@ The fork's list of open work, one line per item: its state, what unblocks it, an
 
 ## Waiting on the owner
 
+- `task-upstream-sync`: `upstream/master` is 26 commits ahead (checked 2026-11-26), and merging it is a port, not a merge. #2062 to #2065 replace the pool model the Gate builds on: `stratum_request_reconnect()` and `SYSTEM_reset_pool_session` are gone, `work_received` and the share counters moved per pool into `pool.h`, and failover now runs primary and fallback pools as two concurrent tasks, so a lease's single connection to its own pool needs a new design. #2072 needs ESP-IDF 6.0.3. #2061 adds its own SV2 certificate-date check beside the fork's stricter one; keep one. The rest merged with small conflicts in `create_jobs_task.c`, `power_management_task.c`, `stratum_v1_client.c` and `test_sv2.c`. Needs the owner's go-ahead, then hardware requalification of the lease guarantees.
 - `task-upstream-mark-valid`: open the mark-valid offer (an issue, linking branch `offer/mark-valid-after-startup`). See "Offer: mark valid after startup" in `docs/project/upstream-candidates.md`.
 
 ## Deferred
