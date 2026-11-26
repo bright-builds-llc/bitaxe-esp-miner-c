@@ -13,8 +13,6 @@
 #define MSG_SUBMIT_ERROR 0x1du
 #define ACK_PAYLOAD_BYTES 20u
 
-_Static_assert(sizeof(crypto_hash_sha256_state) <= sizeof(((bwg_v2_record_t *)0)->commitment_state), "commitment state");
-
 static uint32_t read_u32(const uint8_t *bytes)
 {
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8) | ((uint32_t)bytes[2] << 16) | ((uint32_t)bytes[3] << 24);
@@ -74,7 +72,7 @@ bool bwg_v2_record_admit(bwg_v2_record_t *record, bwg_v2_scope_t scope, const ch
         timing->last_finished_at_us = BWG_V2_NONE;
         timing->in_flight_started_at_us = BWG_V2_NONE;
     }
-    crypto_hash_sha256_init((crypto_hash_sha256_state *)record->commitment_state);
+    crypto_hash_sha256_init(&record->commitment_state);
     bwg_v2_record_event(record, BWG_V2_STAGE_ADMITTED, now_us, BWG_V2_NONE, BWG_V2_NONE, BWG_V2_NONE, NULL);
     return true;
 }
@@ -272,7 +270,7 @@ bool bwg_v2_record_connected(bwg_v2_record_t *record, const bwg_v2_socket_t *soc
 
 static void commit_frame(bwg_v2_record_t *record, const uint8_t header[6], const uint8_t *payload, size_t payload_len)
 {
-    crypto_hash_sha256_state *state = (crypto_hash_sha256_state *)record->commitment_state;
+    crypto_hash_sha256_state *state = &record->commitment_state;
     const uint32_t length = (uint32_t)payload_len + 6u;
     const uint8_t prefix[4] = {(uint8_t)length, (uint8_t)(length >> 8), (uint8_t)(length >> 16), (uint8_t)(length >> 24)};
     crypto_hash_sha256_update(state, prefix, sizeof(prefix));
@@ -322,7 +320,7 @@ static bool job_frame(bwg_v2_record_t *record, uint8_t type, const uint8_t heade
         break;
     default:
         record->last_frame_stage = BWG_V2_STAGE_WORK_READY;
-        crypto_hash_sha256_final((crypto_hash_sha256_state *)record->commitment_state, record->job_commitment);
+        crypto_hash_sha256_final(&record->commitment_state, record->job_commitment);
         bwg_v2_record_event(record, BWG_V2_STAGE_WORK_READY, time_us, first, second, BWG_V2_NONE, digest);
         break;
     }

@@ -5,6 +5,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <sodium.h>
+
 #include "bwg_json_writer.h"
 
 #define BWG_V2_MAX_EVENTS 64u
@@ -236,7 +238,8 @@ typedef struct {
     bwg_v2_pending_nonce_t pending_nonce;
     /** Which of the channel, job, target and prev-hash frames arrived, in that order. */
     uint32_t frame_phase;
-    uint8_t commitment_state[128];
+    /** Its size and alignment follow the SHA-256 backend, which on ESP-IDF is the PSA hash operation. */
+    crypto_hash_sha256_state commitment_state;
     bwg_v2_stage_t last_frame_stage;
 } bwg_v2_record_t;
 

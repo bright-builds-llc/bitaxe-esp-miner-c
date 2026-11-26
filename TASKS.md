@@ -12,7 +12,7 @@ The fork's list of open work, one line per item: its state, what unblocks it, an
 - `task-reference-source-release`: when a reference image first goes to anyone but the owner, build it with `tools/build_reference_image.sh` from a pushed commit, tag the commit, and publish its `SOURCE.txt`, `dependencies.lock` and `THIRD_PARTY_NOTICES.txt` beside the image. See `reference/README.md`.
 - `task-upstream-font-licences`: Nippo and Angel Wish, inherited from upstream, may not be redistributable; accepted as a known risk on 2026-11-20. Revisit by replacing them (ideally upstream), asking the rights holders, or taking advice. See "Inherited fonts" in `reference/README.md`.
 - `task-upstream-stalled-pool`: the pull request for leaving a stalled pool. See `docs/project/upstream-candidates.md`.
-- `task-upstream-candidates`: the other rows with a next action, including the verified ASIC difficulty fix. See `docs/project/upstream-candidates.md`.
+- `task-upstream-candidates`: the other rows with a next action. See `docs/project/upstream-candidates.md`.
 - `task-bright-builds-update`: once `bright-builds-llc/bright-builds-rules` pull request 14 merges, run `bright-builds-auto-update.yml` once and confirm it passes.
 - `task-secured-ble-provisioning`: BLE setup with more security than upstream. BLE stays off in fork builds until this exists. The earlier notes are in the Rust repository's `TASKS.md`.
 - `task-telemetry-descriptive-extensions`: descriptive telemetry names, if still wanted. The earlier notes are in the Rust repository's `TASKS.md`.

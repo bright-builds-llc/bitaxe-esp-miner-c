@@ -146,7 +146,6 @@ This is `bright-builds-llc/bitaxe-esp-miner-c`: upstream's firmware plus the own
   - `main/main.c`: start the Gate and the crash-loop guard, leave the ASIC off on a boot the guard paused, keep an allocation failure's receipt, name the board's pins for the panic cutoff, and replace the unconditional mark-valid with the startup check (`main/bwg/bwg_mark_valid.c`).
   - `partitions.csv`: a coredump partition that takes a whole dump, to the end of flash, matching the Rust image's table.
   - `main/nvs_config.c`, `main/nvs_config.h`: the saved `mineOnBoot` choice the Gate reads, since upstream's pause ends with the boot.
-  - `main/power/asic_init.c`: reapply the difficulty after a reset, which is also sent upstream.
   - `sdkconfig.defaults`: BLE off, the USB port free for the Gate's link, no BBPLL recalibration while it's in use, core dumps to flash, and app rollback on.
   - `test/CMakeLists.txt`: run `bwg_worker` tests.
 
