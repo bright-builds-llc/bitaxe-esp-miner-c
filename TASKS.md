@@ -4,6 +4,7 @@ The fork's list of open work, one line per item: its state, what unblocks it, an
 
 ## Waiting on the owner
 
+- `task-upstream-sync`: branch `sync-upstream-20261126` merges `upstream/master` at `3a531c1` (#2062 to #2065's per-pool sessions and concurrent fallback, #2072's ESP-IDF 6.0.3) with the fork's hooks ported onto it; host tests pass, and CI builds it. Defaults taken without the owner: no fallback pool while a lease is active, a lease reads its work and shares from the primary pool's session, a lease's start and hand-back reset every pool's session, and both SV2 certificate-date checks stay, since upstream's can't refuse what the fork's stricter one passes. Not run on a board, so before it reaches `master` it needs the owner's review and a requalification on hardware of the lease start within 25 s, the stop within its limit, revocation refusing work and shares, the V2 attempt records, the local restart guard and the lease's share counts. Merging it also moves the base the owner chose on 2026-10-30 off `bb4fd0c`.
 - `task-upstream-mark-valid`: open the mark-valid offer (an issue, linking branch `offer/mark-valid-after-startup`). See "Offer: mark valid after startup" in `docs/project/upstream-candidates.md`.
 
 ## Deferred
