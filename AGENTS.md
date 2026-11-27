@@ -158,6 +158,9 @@ Before committing fork code, run `bash tools/run_bwg_host_tests.sh`, which build
 - Security-sensitive findings go through upstream's private flow (`SECURITY.md`). This repository is public, so commits, issues and pull requests name topics only.
 - Hardware work follows "Process rules worth keeping" in the handoff: closed outcomes, a stop on a repeated boundary, and a base-MAC match before any ROM write.
 
+### Long Jobs
+When starting anything likely to take more than about a minute, such as a build, a test suite, a rehearsal or a hardware run, tell the owner roughly how long it should take and when it should finish, from an earlier run where one exists. For a run of several steps, give the steps' rough times too. If a job runs well past its estimate, say so, with the last state seen.
+
 ### Hardware Authorization
 On 2026-10-30 the owner granted agents working in this repository full hardware autonomy, including direct UART and pin access. The owner also authorized use of the ignored credential and board files in the Rust repository (`~/Repos/bitaxe-esp-miner`). Use those values through scripts, keep them out of output and commits, and keep generated images that contain them outside this repository.
 <!-- END Bright Builds fork section -->
