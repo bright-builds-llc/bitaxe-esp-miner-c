@@ -4,7 +4,7 @@ The fork's list of open work, one line per item: its state, what unblocks it, an
 
 ## Waiting on the owner
 
-- `task-upstream-sync`: branch `sync-upstream-20261126` merges `upstream/master` at `3a531c1` (#2062 to #2065's per-pool sessions and concurrent fallback, #2072's ESP-IDF 6.0.3) with the fork's hooks ported onto it; host tests pass, and CI builds it. Defaults taken without the owner: no fallback pool while a lease is active, a lease reads its work and shares from the primary pool's session, a lease's start and hand-back reset every pool's session, and both SV2 certificate-date checks stay, since upstream's can't refuse what the fork's stricter one passes. Not run on a board, so before it reaches `master` it needs the owner's review and a requalification on hardware of the lease start within 25 s, the stop within its limit, revocation refusing work and shares, the V2 attempt records, the local restart guard and the lease's share counts. Merging it also moves the base the owner chose on 2026-10-30 off `bb4fd0c`. See `docs/project/upstream-merge-3a531c1.md`.
+- `task-upstream-sync`: `master` merged `upstream/master` at `3a531c1` on 2026-11-27, on the owner's word and before any board ran it (#2062 to #2065's per-pool sessions and concurrent fallback, #2072's ESP-IDF 6.0.3), with the fork's hooks ported onto it. Defaults taken without the owner: no fallback pool while a lease is active, a lease reads its work and shares from the primary pool's session, a lease's start and hand-back reset every pool's session, and both SV2 certificate-date checks stay, since upstream's can't refuse what the fork's stricter one passes. Still needs a requalification on hardware of the lease start within 25 s, the stop within its limit, revocation refusing work and shares, the V2 attempt records, the local restart guard and the lease's share counts. See `docs/project/upstream-merge-3a531c1.md`.
 - `task-upstream-mark-valid`: open the mark-valid offer (an issue, linking branch `offer/mark-valid-after-startup`). See "Offer: mark valid after startup" in `docs/project/upstream-candidates.md`.
 
 ## Deferred
@@ -13,10 +13,8 @@ The fork's list of open work, one line per item: its state, what unblocks it, an
 - `task-upstream-font-licences`: Nippo and Angel Wish, inherited from upstream, may not be redistributable; accepted as a known risk on 2026-11-20. Revisit by replacing them (ideally upstream), asking the rights holders, or taking advice. See "Inherited fonts" in `reference/README.md`.
 - `task-upstream-stalled-pool`: the pull request for leaving a stalled pool. See `docs/project/upstream-candidates.md`.
 - `task-upstream-candidates`: the other rows with a next action. See `docs/project/upstream-candidates.md`.
-- `task-bright-builds-update`: once `bright-builds-llc/bright-builds-rules` pull request 14 merges, run `bright-builds-auto-update.yml` once and confirm it passes.
 - `task-secured-ble-provisioning`: BLE setup with more security than upstream. BLE stays off in fork builds until this exists. The earlier notes are in the Rust repository's `TASKS.md`.
 - `task-telemetry-descriptive-extensions`: descriptive telemetry names, if still wanted. The earlier notes are in the Rust repository's `TASKS.md`.
-- `task-secp256k1-lowmemory`: save about 1 MB with the `secp256k1` table setting. See `docs/project/c-fork-handoff.md`.
 
 ## Unexplained results
 

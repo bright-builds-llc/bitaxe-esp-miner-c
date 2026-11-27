@@ -107,7 +107,7 @@ We use GitHub Actions for automated testing and releases.
 This is `bright-builds-llc/bitaxe-esp-miner-c`: upstream's firmware plus the owner's extensions, chiefly Bitcoin Work Gate interoperability, with as small a difference from upstream as possible. Read `docs/project/c-fork-handoff.md` before any work on the Gate, an upstream fix, a fork-only extension or moving a device. It holds the ordered steps, the protocol summary and the hazards. `TASKS.md` lists open work, deferred items and unexplained results, one line each with a pointer to the detail; update it when one of these starts, ends or changes.
 
 ### Owner Decisions (2026-10-30)
-- **Base:** fork work lands on `master`, on top of upstream's `master` at `bb4fd0c`. This replaces the handoff's recommendation of a separate branch from `v2.15.4`. Pull requests to upstream start from `upstream/master`, so they carry none of the fork's commits.
+- **Base:** fork work lands on `master`, on top of upstream's `master`, at `bb4fd0c` until the owner had `3a531c1` merged on 2026-11-27. This replaces the handoff's recommendation of a separate branch from `v2.15.4`. Pull requests to upstream start from `upstream/master`, so they carry none of the fork's commits.
 - **Web UI:** keep AxeOS and add what the Gate needs.
 - **Device limits:** the catalog range and the target-power stop apply only while a Gate lease is active.
 - **BLE:** off in fork builds until the secured design (`task-secured-ble-provisioning`) exists.

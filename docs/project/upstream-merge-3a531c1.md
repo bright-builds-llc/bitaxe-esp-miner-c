@@ -1,6 +1,6 @@
 # Upstream merge at `3a531c1`
 
-Branch `sync-upstream-20261126` merges `upstream/master` at `3a531c1` into the fork at `220d2dd`: 26 upstream commits, from #2072 (ESP-IDF 6.0.3) to #2128. This review names what each group of changes touches in the fork and which checks it invalidates, as the sync policy in `c-fork-handoff.md` asks.
+Branch `sync-upstream-20261126` merges `upstream/master` at `3a531c1` into the fork at `220d2dd`: 26 upstream commits, from #2072 (ESP-IDF 6.0.3) to #2128. This review names what each group of changes touches in the fork and which checks it invalidates, as the sync policy in `c-fork-handoff.md` asks. It reached `master` on 2026-11-27 on the owner's word, before any board ran it.
 
 **Evidence:** CI on `5a95fabc` passed the firmware build on IDF 6.0.3, the QEMU unit tests (261, no failures), the BWG host tests (679, plain and sanitized) and the Bright Builds checks. **Non-claims:** nothing on this branch has run on a board, and none of the hardware evidence in `gate-integration-evidence.md` covers it.
 
