@@ -6,11 +6,11 @@
 #
 # Usage: tools/build_reference_image.sh [--local] <commit> <out-dir>
 #   --local  allow a commit not on origin, for checking the script; SOURCE.txt then says "not published"
-# Needs ESP-IDF v6.0.2's export.sh sourced and Node 22 or later on PATH.
+# Needs ESP-IDF v6.0.3's export.sh sourced and Node 22 or later on PATH.
 set -euo pipefail
 
 source_repository="https://github.com/bright-builds-llc/bitaxe-esp-miner-c"
-required_idf="v6.0.2"
+required_idf="v6.0.3"
 
 fail() {
   echo "build_reference_image: $*" >&2
