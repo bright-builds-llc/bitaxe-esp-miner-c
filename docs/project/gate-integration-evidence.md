@@ -600,13 +600,41 @@ On 2026-11-27 the 205 ran the whole hardware campaign on `393f1714`, `master` af
 The board ended paused on `1c398328`, with `mineOnBoot` 0, its core off, the pools configured and Wi-Fi up.
 
 Non-claims:
-- **Only the 205**, one BM1366 board, against test pools and fixtures. The 601 hasn't run either image.
+- **Only the 205**, one BM1366 board, against test pools and fixtures. The 601 ran `be7c0895`, which holds the fix, in the next section.
 - **The fix's image ran only the steps above.** The harness, acceptance, V2 noise and shares, the guards and the fan stop ran on `393f1714` alone.
 - **No real pool was stalled**, and the 30 s answer limit wasn't tried against a slow but healthy pool.
 - **V2 has no answer limit**, since its pools may acknowledge shares in batches. A frozen V2 fixture still ends on the record's 16-frame limit, as before.
 - **Off a lease nothing changed**: upstream's board still keeps a pool that accepts and never answers.
 - **Not run:** the restart guard's hold, the certificate-date refusal (host tests only), the startup mark-valid check on a fresh image, and the ASIC difficulty after a stop and restart.
 - **The unanswered `reboot` and the first `local_input_invalid`** happened once each and weren't explained.
+
+## The upstream merge on the 601
+
+From 21:02 on 2026-11-27 to 00:01 the next day, the 601 ran the whole campaign on `be7c0895`, `master` with the stall fix (`1c398328`) and its record, built as for the 205 and flashed after a base-MAC match. It took 2 h 58 min, with the 205 off USB.
+
+| Check | Result |
+|---|---|
+| Harness, 11 scenarios | Each ended at baseline, restoration `confirmed` or, for `connect`, not required. Start replies 10.3 to 10.5 s. `lease_stop` stopped in 47,971 ms, and mining took 20 accepted and 0 rejected, stopping in 47,471 ms |
+| Close probe | 600 rounds, 0 failures |
+| Restoration pages | 0 failures, `reboot` among them |
+| Acceptance | All 7 plans passed, with 0 telemetry frames dropped in the cadence plan and the core-dump self-test `ready` then `complete` |
+| V2 | Noise accepted, cancel cancelled, wrong authority rejected `authority_verified/authentication/wrong_authority`, and channel and share accepted, through the harness and the pages. The harness share submitted and acknowledged 3, the page's 2 |
+| Crash-loop guard | Three interrupt-watchdog resets paused the board `crash_loop` at 19 mV. A lease from the hold started in 10.3 s and stopped in 48,126 ms, resume restored hashing, the streak cleared, and one more reset didn't pause. The guard check passed |
+| Restart guard | Never held: 159 connections in 1,319 s and the ASIC powered once, as on the 205 |
+| Fan stop | `zero_fan` ended the lease `unsafe_observation` after 12,856 ms |
+| Pool lost once | Reconnected, and 193 shares were accepted after the fault |
+| Pool lost, unanswered | `control_failed` in both, with stops of 47,775 and 47,901 ms |
+| Pool stops reading and sending, twice | The board left the stalled connection 31 s after the fault, then three connections without work, and the lease ended `control_failed` about 110 s after the fault. Stops 47,652 and 47,699 ms |
+| V2 fixture killed or stopped | `control_failed` in both, with stops of 48,011 and 48,627 ms |
+| Silent and quiet pool Starts | Both refused "Lease did not reach work within 25000 ms", and the board ended paused |
+
+The board ended paused on `be7c0895`, with `mineOnBoot` 0, its core at 19 mV, the pools configured and Wi-Fi up. This board's stops run about 48 s, against the 205's 20 to 33 s, as in earlier runs.
+
+Non-claims:
+- **One BM1370 board**, against test pools and fixtures. No real pool was stalled, and the 30 s answer limit wasn't tried against a slow but healthy pool.
+- **The restart guard's hold wasn't exercised**, on either board.
+- **Not run:** the certificate-date refusal (host tests only), the startup mark-valid check on a fresh image, and the ASIC difficulty after a stop and restart.
+- **Off a lease nothing changed**, and V2 has no answer limit, as for the 205.
 
 ## Differences from Rust
 
