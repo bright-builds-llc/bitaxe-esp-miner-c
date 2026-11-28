@@ -52,6 +52,11 @@ static _Atomic uint32_t s_lease_rejected;
 static uint32_t s_session_accepted;
 static uint32_t s_session_rejected;
 
+// The primary stratum task's open session, with 0 for none. Only one check can take it, so a connection is left once.
+static _Atomic uint64_t s_pool_session_opened_ms;
+static _Atomic uint64_t s_pool_session_work_before;
+static _Atomic uint16_t s_pool_session_idx;
+
 static uint64_t now_ms(void)
 {
     return (uint64_t)(esp_timer_get_time() / 1000);
@@ -289,6 +294,48 @@ void bwg_mining_note_sample(const bwg_safety_sample_t *sample)
     atomic_store(&s_latest_sample_ms, now_ms());
 }
 
+void bwg_mining_note_session_start(uint16_t pool_idx, uint64_t work_before)
+{
+    atomic_store(&s_pool_session_idx, pool_idx);
+    atomic_store(&s_pool_session_work_before, work_before);
+    atomic_store(&s_pool_session_opened_ms, now_ms());
+}
+
+void bwg_mining_note_session_end(void)
+{
+    atomic_store(&s_pool_session_opened_ms, 0);
+}
+
+// Upstream's read loop waits out each timeout and reads again, so only a failed read or an abort ends a session.
+// Only the power task calls this, so the answer watch is its own.
+static void leave_silent_lease_pool(GlobalState *GLOBAL_STATE, uint64_t now)
+{
+    static bwg_answer_watch_t s_answers;
+    static uint64_t s_answers_opened_ms;
+    uint64_t opened = atomic_load(&s_pool_session_opened_ms);
+    const uint16_t pool_idx = atomic_load(&s_pool_session_idx);
+    if (opened == 0 || pool_idx >= MAX_POOLS) {
+        return;
+    }
+    if (opened != s_answers_opened_ms) {
+        s_answers = (bwg_answer_watch_t){0};
+        s_answers_opened_ms = opened;
+    }
+    const PoolSession *session = &GLOBAL_STATE->SYSTEM_MODULE.pool_sessions[pool_idx];
+    bwg_answer_watch_note(&s_answers, session->shares_submitted, session->shares_accepted + session->shares_rejected, now);
+    const bwg_pool_session_facts_t facts = {
+        .lease_pool = bwg_mining_lease_pool_active(),
+        .had_work = session->work_received > atomic_load(&s_pool_session_work_before),
+        .open_ms = now - opened,
+        .answers_each_share = bwg_mining_pool_or(&GLOBAL_STATE->SYSTEM_MODULE.pools[pool_idx])->protocol == STRATUM_PROTOCOL_V1,
+        .unanswered_ms = bwg_answer_watch_waiting_ms(&s_answers, now),
+    };
+    if (bwg_pool_session_overdue(&facts) && atomic_compare_exchange_strong(&s_pool_session_opened_ms, &opened, 0)) {
+        ESP_LOGW(TAG, "Leaving the lease's pool: %s", facts.had_work ? "shares unanswered" : "no work");
+        stratum_abort_pool(pool_idx);
+    }
+}
+
 void bwg_mining_check_limits(GlobalState *GLOBAL_STATE)
 {
     const uint64_t now = now_ms();
@@ -306,6 +353,7 @@ void bwg_mining_check_limits(GlobalState *GLOBAL_STATE)
         return;
     }
     bwg_mining_latch_shares(GLOBAL_STATE);
+    leave_silent_lease_pool(GLOBAL_STATE, now);
     bwg_board_limits_t limits;
     const bool limits_known = bwg_board_limits_for(GLOBAL_STATE->DEVICE_CONFIG.board_version,
                                                    GLOBAL_STATE->DEVICE_CONFIG.power_consumption_target, &limits);

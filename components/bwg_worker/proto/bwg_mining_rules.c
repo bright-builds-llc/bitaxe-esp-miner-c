@@ -64,3 +64,41 @@ bool bwg_cool_streak_proves_cooling(uint32_t streak)
 {
     return streak >= BWG_COOL_READINGS_TO_PROVE;
 }
+
+bool bwg_pool_session_overdue(const bwg_pool_session_facts_t *facts)
+{
+    if (!facts->lease_pool) {
+        return false;
+    }
+    return (!facts->had_work && facts->open_ms >= BWG_POOL_FIRST_WORK_MS) ||
+           (facts->answers_each_share && facts->unanswered_ms >= BWG_POOL_ANSWER_MS);
+}
+
+bool bwg_pool_session_failed(bool lease_pool, bool ended_ok, bool had_work)
+{
+    if (had_work) {
+        return false;
+    }
+    return lease_pool || !ended_ok;
+}
+
+void bwg_answer_watch_note(bwg_answer_watch_t *watch, uint64_t submitted, uint64_t answered, uint64_t now_ms)
+{
+    if (answered != watch->answered) {
+        watch->answered = answered;
+        watch->waiting_since_ms = 0;
+    }
+    if (submitted <= answered) {
+        watch->waiting_since_ms = 0;
+    } else if (watch->waiting_since_ms == 0) {
+        watch->waiting_since_ms = now_ms;
+    }
+}
+
+uint64_t bwg_answer_watch_waiting_ms(const bwg_answer_watch_t *watch, uint64_t now_ms)
+{
+    if (watch->waiting_since_ms == 0 || now_ms < watch->waiting_since_ms) {
+        return 0;
+    }
+    return now_ms - watch->waiting_since_ms;
+}

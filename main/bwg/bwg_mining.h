@@ -71,8 +71,17 @@ bool bwg_mining_holds_pool(const GlobalState *GLOBAL_STATE);
 /** Whether a lease's pool is in force, which rules out any fallback. */
 bool bwg_mining_lease_pool_active(void);
 
-/** Records this poll's sample, and revokes a lease that has had no safe one for a second. Called from the power task's loop. */
+/**
+ * Records this poll's sample, and revokes a lease that has had no safe one for a second. Also leaves a lease's pool
+ * connection that has brought no work in time. Called from the power task's loop.
+ */
 void bwg_mining_check_limits(GlobalState *GLOBAL_STATE);
+
+/** The primary stratum task opens a session on this pool, whose work count is this now. */
+void bwg_mining_note_session_start(uint16_t pool_idx, uint64_t work_before);
+
+/** The primary stratum task's session has ended. */
+void bwg_mining_note_session_end(void);
 
 /** Upstream's overheat check tripped during a lease, on the chip or else the regulator, at this reading. */
 void bwg_mining_end_lease_on_overheat(bool chip, float celsius);

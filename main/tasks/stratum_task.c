@@ -12,6 +12,7 @@
 #include "system.h"
 #include "bwg_revocation.h"
 #include "bwg_mining.h"
+#include "bwg_mining_rules.h"
 #include "bwg_v2_runtime.h"
 #include <string.h>
 
@@ -275,7 +276,13 @@ void stratum_task(void *pvParameters)
 
         ESP_LOGI(TAG, "%s worker running pool %u (%s)", is_primary ? "Primary" : "Fallback", pool_idx, pool->url);
         uint64_t work_before = GLOBAL_STATE->SYSTEM_MODULE.pool_sessions[pool_idx].work_received;
+        if (is_primary) {
+            bwg_mining_note_session_start(pool_idx, work_before);
+        }
         esp_err_t err = run_pool_session(GLOBAL_STATE, pool_idx);
+        if (is_primary) {
+            bwg_mining_note_session_end();
+        }
 
         // Check if fallback should exit after session unblocks
         if (!is_primary && fallback_should_exit(GLOBAL_STATE)) {
@@ -292,7 +299,7 @@ void stratum_task(void *pvParameters)
         }
 
         bool session_had_work = (GLOBAL_STATE->SYSTEM_MODULE.pool_sessions[pool_idx].work_received > work_before);
-        if (err == ESP_OK || session_had_work) {
+        if (!bwg_pool_session_failed(bwg_mining_lease_pool_active(), err == ESP_OK, session_had_work)) {
             retry_attempts = 0;
             POOL_reset_session(GLOBAL_STATE, pool_idx);
         } else {

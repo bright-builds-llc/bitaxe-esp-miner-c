@@ -220,6 +220,184 @@ static void the_cool_streak_stops_at_its_limit(void)
     ASSERT_EQ(bwg_cool_streak_next(UINT32_MAX, true), UINT32_MAX);
 }
 
+static void a_lease_session_without_work_is_left_at_the_start_limit(void)
+{
+    // Arrange
+    const bwg_pool_session_facts_t facts = {.lease_pool = true, .had_work = false, .open_ms = BWG_POOL_FIRST_WORK_MS};
+
+    // Act
+    const bool leave = bwg_pool_session_overdue(&facts);
+
+    // Assert
+    ASSERT_TRUE(leave);
+}
+
+static void a_lease_session_without_work_is_kept_before_the_start_limit(void)
+{
+    // Arrange
+    const bwg_pool_session_facts_t facts = {.lease_pool = true, .had_work = false, .open_ms = BWG_POOL_FIRST_WORK_MS - 1};
+
+    // Act
+    const bool leave = bwg_pool_session_overdue(&facts);
+
+    // Assert
+    ASSERT_FALSE(leave);
+}
+
+static void a_lease_session_with_work_is_kept(void)
+{
+    // Arrange
+    const bwg_pool_session_facts_t facts = {.lease_pool = true, .had_work = true, .open_ms = 10 * BWG_POOL_FIRST_WORK_MS};
+
+    // Act
+    const bool leave = bwg_pool_session_overdue(&facts);
+
+    // Assert
+    ASSERT_FALSE(leave);
+}
+
+static void a_local_session_without_work_is_kept(void)
+{
+    // Arrange
+    const bwg_pool_session_facts_t facts = {.lease_pool = false, .had_work = false, .open_ms = 10 * BWG_POOL_FIRST_WORK_MS};
+
+    // Act
+    const bool leave = bwg_pool_session_overdue(&facts);
+
+    // Assert
+    ASSERT_FALSE(leave);
+}
+
+static void a_lease_session_that_ended_cleanly_without_work_failed(void)
+{
+    // Act / Assert
+    ASSERT_TRUE(bwg_pool_session_failed(true, true, false));
+}
+
+static void a_lease_session_with_work_succeeded_however_it_ended(void)
+{
+    // Act / Assert
+    ASSERT_FALSE(bwg_pool_session_failed(true, false, true));
+}
+
+static void a_local_session_that_ended_cleanly_without_work_succeeded(void)
+{
+    // Act / Assert
+    ASSERT_FALSE(bwg_pool_session_failed(false, true, false));
+}
+
+static void a_local_session_that_ended_in_error_without_work_failed(void)
+{
+    // Act / Assert
+    ASSERT_TRUE(bwg_pool_session_failed(false, false, false));
+}
+
+static void a_lease_session_with_a_share_unanswered_is_left_at_the_answer_limit(void)
+{
+    // Arrange
+    const bwg_pool_session_facts_t facts = {
+        .lease_pool = true, .had_work = true, .open_ms = 60000, .answers_each_share = true, .unanswered_ms = BWG_POOL_ANSWER_MS};
+
+    // Act
+    const bool leave = bwg_pool_session_overdue(&facts);
+
+    // Assert
+    ASSERT_TRUE(leave);
+}
+
+static void a_lease_session_with_a_share_unanswered_is_kept_before_the_answer_limit(void)
+{
+    // Arrange
+    const bwg_pool_session_facts_t facts = {
+        .lease_pool = true, .had_work = true, .open_ms = 60000, .answers_each_share = true, .unanswered_ms = BWG_POOL_ANSWER_MS - 1};
+
+    // Act
+    const bool leave = bwg_pool_session_overdue(&facts);
+
+    // Assert
+    ASSERT_FALSE(leave);
+}
+
+static void a_local_session_with_a_share_unanswered_is_kept(void)
+{
+    // Arrange
+    const bwg_pool_session_facts_t facts = {
+        .lease_pool = false, .had_work = true, .open_ms = 60000, .answers_each_share = true, .unanswered_ms = 10 * BWG_POOL_ANSWER_MS};
+
+    // Act
+    const bool leave = bwg_pool_session_overdue(&facts);
+
+    // Assert
+    ASSERT_FALSE(leave);
+}
+
+static void a_lease_session_acknowledged_in_batches_is_kept_while_shares_wait(void)
+{
+    // Arrange
+    const bwg_pool_session_facts_t facts = {
+        .lease_pool = true, .had_work = true, .open_ms = 60000, .answers_each_share = false,
+        .unanswered_ms = 10 * BWG_POOL_ANSWER_MS};
+
+    // Act
+    const bool leave = bwg_pool_session_overdue(&facts);
+
+    // Assert
+    ASSERT_FALSE(leave);
+}
+
+static void a_share_waits_from_the_poll_that_first_saw_it(void)
+{
+    // Arrange
+    bwg_answer_watch_t watch = {0};
+    bwg_answer_watch_note(&watch, 0, 0, 1000);
+
+    // Act
+    bwg_answer_watch_note(&watch, 1, 0, 2000);
+    bwg_answer_watch_note(&watch, 2, 0, 3000);
+
+    // Assert
+    ASSERT_EQ(bwg_answer_watch_waiting_ms(&watch, 9000), 7000u);
+}
+
+static void an_answer_restarts_the_wait_for_shares_still_waiting(void)
+{
+    // Arrange
+    bwg_answer_watch_t watch = {0};
+    bwg_answer_watch_note(&watch, 2, 0, 1000);
+
+    // Act
+    bwg_answer_watch_note(&watch, 2, 1, 5000);
+
+    // Assert
+    ASSERT_EQ(bwg_answer_watch_waiting_ms(&watch, 6000), 1000u);
+}
+
+static void nothing_waits_once_every_share_is_answered(void)
+{
+    // Arrange
+    bwg_answer_watch_t watch = {0};
+    bwg_answer_watch_note(&watch, 2, 0, 1000);
+
+    // Act
+    bwg_answer_watch_note(&watch, 2, 2, 5000);
+
+    // Assert
+    ASSERT_EQ(bwg_answer_watch_waiting_ms(&watch, 60000), 0u);
+}
+
+static void a_session_whose_counts_start_over_restarts_the_wait(void)
+{
+    // Arrange
+    bwg_answer_watch_t watch = {0};
+    bwg_answer_watch_note(&watch, 40, 30, 1000);
+
+    // Act
+    bwg_answer_watch_note(&watch, 1, 0, 50000);
+
+    // Assert
+    ASSERT_EQ(bwg_answer_watch_waiting_ms(&watch, 51000), 1000u);
+}
+
 void bwg_tests_mining_rules(void)
 {
     BWG_RUN(a_wanted_stop_reads_as_stopping_until_it_finishes);
@@ -239,4 +417,20 @@ void bwg_tests_mining_rules(void)
     BWG_RUN(cooling_is_proven_by_three_cool_readings_in_a_row);
     BWG_RUN(a_warm_reading_starts_the_cool_streak_over);
     BWG_RUN(the_cool_streak_stops_at_its_limit);
+    BWG_RUN(a_lease_session_without_work_is_left_at_the_start_limit);
+    BWG_RUN(a_lease_session_without_work_is_kept_before_the_start_limit);
+    BWG_RUN(a_lease_session_with_work_is_kept);
+    BWG_RUN(a_local_session_without_work_is_kept);
+    BWG_RUN(a_lease_session_that_ended_cleanly_without_work_failed);
+    BWG_RUN(a_lease_session_with_work_succeeded_however_it_ended);
+    BWG_RUN(a_local_session_that_ended_cleanly_without_work_succeeded);
+    BWG_RUN(a_local_session_that_ended_in_error_without_work_failed);
+    BWG_RUN(a_lease_session_with_a_share_unanswered_is_left_at_the_answer_limit);
+    BWG_RUN(a_lease_session_with_a_share_unanswered_is_kept_before_the_answer_limit);
+    BWG_RUN(a_local_session_with_a_share_unanswered_is_kept);
+    BWG_RUN(a_lease_session_acknowledged_in_batches_is_kept_while_shares_wait);
+    BWG_RUN(a_share_waits_from_the_poll_that_first_saw_it);
+    BWG_RUN(an_answer_restarts_the_wait_for_shares_still_waiting);
+    BWG_RUN(nothing_waits_once_every_share_is_answered);
+    BWG_RUN(a_session_whose_counts_start_over_restarts_the_wait);
 }
