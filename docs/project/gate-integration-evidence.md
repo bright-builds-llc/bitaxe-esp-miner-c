@@ -567,6 +567,47 @@ After each case the 601 went back to `247d2cd` from its pre-install backup, writ
 
 Non-claims: one board, and one run of each case except the refused table. Both packages report 0.1.0, so "newer" means the later commit, and onboarding compares no versions. Whether the update rewrote the bootloader isn't observable, since the bytes were equal. The failed check's fault was staged, from stock and not from a reference image, and its bootloader rollback is inferred from HTTP and timing, since the page held the serial port. Whether `51e5af9` changed `nvs` before failing wasn't observed, so the restore rests on the categories matching. Another board's MAC is refused only against a fake esptool-js. Every board started with its own identity in `nvs`; a board from the field that creates one on first boot wasn't run.
 
+## The upstream merge on the 205
+
+On 2026-11-27 the 205 ran the whole hardware campaign on `393f1714`, `master` after the merge of upstream's `3a531c1` (`docs/project/upstream-merge-3a531c1.md`), built with ESP-IDF 6.0.3 from a fresh worktree with the test authority's trust and flashed after a base-MAC match. It took 2 h 50 min. The 601 wasn't on USB, because the test Chrome profile is granted both boards' ports and would have asked which to open.
+
+| Check | Result on `393f1714` |
+|---|---|
+| Harness, 11 scenarios | Each ended in its baseline or confirmed outcome. Start replies about 11.2 s. `lease_stop` stopped in 19,670 ms, and mining took 14 accepted and 0 rejected, stopping in 32.9 s, where the last run took 52.6 s |
+| Close probe, restoration pages | Passed, apart from one `reboot` whose restart request went unanswered for about 60 s during a lease. Three reruns of `reboot` passed |
+| Acceptance | Passed: diagnostic, foreground, heartbeat, soak and cadence, with 0 telemetry frames dropped, and the core-dump self-test `ready` then `complete`. The first `attempt_normal` was refused `local_input_invalid` 1.9 s into the run, before the page could read its supervisor's input, and the next passed |
+| V2 | Noise, its cancel, wrong authority (`authority_verified/authentication/wrong_authority`), channel and pages passed, and the share page submitted and acknowledged 4. The first plain Noise run failed `fixture_not_ready` on the fixture's slow first launch, and its rerun passed. The V2 share passed through the harness and the page |
+| Crash-loop guard | Three interrupt-watchdog resets paused the board `crash_loop` at 0 mV. A lease from the hold started in 11.1 s, resume cleared the streak, and one more reset didn't pause |
+| Restart guard | Never held. The test pool sends no work, and upstream now clears `pools_unavailable` only on work, so the ASIC was powered once, at 38 s, and never cycled. The property held, but the guard's hold wasn't exercised |
+| Fan stop | `zero_fan` ended the lease `unsafe_observation` after 11,871 ms, and the settings were restored |
+| Pools lost once, lost, unanswered | Reconnected and renewed 15 times; `control_failed` with a 19.2 s stop; `control_failed` about 37 s after the fault with a 19.6 s stop |
+| Pool stops reading and sending | **Regressed**, three times out of three: the lease ran its 313 s with no work after the fault, ending `restoration_requested`. Before the merge it ended `control_failed` about 100 s after the fault |
+| V2 fixture killed or stopped | `control_failed` in both |
+| Silent and quiet pool Starts | Both refused "Lease did not reach work within 25000 ms", and the board ended paused with its core off |
+
+**The stall.** Diagnostic images with the pool logs left on (`3755c094` plus that change, not committed) showed the cause. This board's shares now come about 0.8 a second, not 6, since #2036 removed the difficulty controller, and #2086 and #2101 enlarged the TCP buffers. So the first failed send, which leaves the stalled connection, came 120 to 227 s after the fault. The fixture accepts the next connection and never answers it. Upstream's read loop waits out each 5 s timeout and reads again, and #2009's dropping of stale shares means nothing is sent that could fail. The abort also ended the session cleanly, so it never counted toward the three failures that mark the pools unavailable. Before the merge, stale shares on each new connection failed within about 25 s and hid both.
+
+**The fix, `1c398328` on `fix/lease-silent-pool`.** During a lease, a V1 connection that answers no share for 30 s, or brings no work within the Start's 25 s, is left, and a lease's session that brought no work counts as failed. The rules are `bwg_pool_session_overdue`, `bwg_pool_session_failed` and the answer watch in `proto/bwg_mining_rules.c`, with host tests. On the 205 that image ran the campaign's pool, V2 fault, Start and final steps:
+
+| Check | Result on `1c398328` |
+|---|---|
+| Pool stops reading and sending, twice | The board left the stalled connection 30 s after the fault, then three connections without work, and the lease ended `control_failed` about 110 s after the fault, with stops of 29,959 ms and 29,543 ms |
+| Lost once, lost | As on `393f1714`: 208 shares accepted after the reconnect; `control_failed` with a 19,460 ms stop |
+| Unanswered | `control_failed` about 37 s after the fault, on the rerun. The first run's reconnect, 0.1 s after the fault, reached the test pool's listener before it closed, and that lease mined on to its end. The test pool closes its listener after dropping the connection, so this is its race, not the board's |
+| V2 fixture killed or stopped | `control_failed` in both |
+| Silent and quiet pool Starts | As on `393f1714` |
+
+The board ended paused on `1c398328`, with `mineOnBoot` 0, its core off, the pools configured and Wi-Fi up.
+
+Non-claims:
+- **Only the 205**, one BM1366 board, against test pools and fixtures. The 601 hasn't run either image.
+- **The fix's image ran only the steps above.** The harness, acceptance, V2 noise and shares, the guards and the fan stop ran on `393f1714` alone.
+- **No real pool was stalled**, and the 30 s answer limit wasn't tried against a slow but healthy pool.
+- **V2 has no answer limit**, since its pools may acknowledge shares in batches. A frozen V2 fixture still ends on the record's 16-frame limit, as before.
+- **Off a lease nothing changed**: upstream's board still keeps a pool that accepts and never answers.
+- **Not run:** the restart guard's hold, the certificate-date refusal (host tests only), the startup mark-valid check on a fresh image, and the ASIC difficulty after a stop and restart.
+- **The unanswered `reboot` and the first `local_input_invalid`** happened once each and weren't explained.
+
 ## Differences from Rust
 
 By decision:
